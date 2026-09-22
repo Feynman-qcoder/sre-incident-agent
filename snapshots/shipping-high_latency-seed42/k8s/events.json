@@ -1,0 +1,20 @@
+[
+  {
+    "type": "Normal",
+    "reason": "Updated",
+    "message": "Successfully update ObservedGeneration and FailedMessage of resource",
+    "count": 1,
+    "first_time": "2026-09-16 08:10:47+00:00",
+    "last_time": "2026-09-16 08:10:47+00:00",
+    "involved_object_name": "shipping-5df7c5d696-2bchz"
+  },
+  {
+    "type": "Normal",
+    "reason": "Updated",
+    "message": "Successfully update ObservedGeneration and FailedMessage of resource",
+    "count": 1,
+    "first_time": "2026-09-16 08:15:47+00:00",
+    "last_time": "2026-09-16 08:15:47+00:00",
+    "involved_object_name": "shipping-5df7c5d696-2bchz"
+  }
+]

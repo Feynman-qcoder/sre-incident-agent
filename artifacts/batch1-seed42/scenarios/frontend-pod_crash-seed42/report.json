@@ -1,0 +1,96 @@
+{
+  "incident_id": "frontend-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T09:18:25.871193+00:00",
+  "investigation_end_ts": "2026-09-18T09:18:41.618611+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "pod_crash",
+      "description": "The frontend container was terminated ('Killing: Stopping container frontend') and immediately replaced by a freshly scheduled pod frontend-76cbddfbcc-zm8l8, causing the frontend server request rate to collapse (p50 ~8 req/s vs. a window mean of ~148 req/s). Error rate and CPU on the frontend pods stayed normal, indicating a container-level crash/restart rather than a resource or downstream fault.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=148.190 req/s, p50=8.009 req/s (collapse), p95=432.873, max=604.823; anomaly flagged",
+          "expected_baseline": "steady-state frontend request_rate ~148 req/s (window mean)"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Stopping container frontend",
+          "observed_value": "count=1 within the incident window",
+          "expected_baseline": "no container-stop/kill events during steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "SuccessfulCreate: Created pod: frontend-76cbddfbcc-zm8l8",
+          "observed_value": "new frontend pod created and started (Scheduled/Created/Started events count=1 each)",
+          "expected_baseline": "no pod rescheduling/replacement in steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.006, p95=0.019 (no anomaly)",
+          "expected_baseline": "error_rate < 0.02"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu mean=0.072, max=0.091 cores (no anomaly)",
+          "expected_baseline": "cpu usage ~0.07 cores steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts mean=0.000, max=0.000 (replacement pod freshly started, counter reset)",
+          "expected_baseline": "0 restarts in steady state"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "A downstream propagation hypothesis (frontend depends on checkout) is plausible if the frontend request collapse were caused by an upstream dependency, but frontend error_rate stayed flat (~0.006) and no checkout-side anomaly was observed, making this a weaker secondary explanation.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.006 (no spike), inconsistent with a downstream dependency failure",
+          "expected_baseline": "error_rate < 0.02"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "A latency-based fault was considered, but the observed anomaly was a request-rate collapse plus a container-kill event while CPU and error signals remained flat, so latency saturation is an unlikely root cause.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu mean=0.072, max=0.091 cores (no saturation)",
+          "expected_baseline": "cpu usage ~0.07 cores steady state"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm the frontend pod restart/crash: kubectl -n otel-demo get pods -l app=frontend and kubectl describe pod frontend-76cbddfbcc-zm8l8 (inspect Last State, Reason, Exit Code).",
+    "Inspect the terminated frontend container's previous logs (kubectl logs <prior-frontend-pod> --previous) to distinguish OOMKill, liveness-probe kill, or application crash.",
+    "Check frontend resource limits/requests and liveness/readiness probe thresholds; raise memory/CPU limits or tune probe timeouts if the container was killed by resource pressure or a failed probe.",
+    "Verify load-generator traffic recovery by confirming frontend request_rate returns to its ~148 req/s baseline after the replacement pod is Ready."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.875,
+  "latency_s": 15.747418,
+  "cost_usd": 0.0015940499999999999,
+  "total_prompt_tokens": 4735,
+  "total_completion_tokens": 1473,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

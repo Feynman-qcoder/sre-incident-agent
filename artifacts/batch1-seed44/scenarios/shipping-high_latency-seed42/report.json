@@ -1,0 +1,89 @@
+{
+  "incident_id": "shipping-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T09:29:14.572234+00:00",
+  "investigation_end_ts": "2026-09-18T09:29:32.342283+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "The shipping service exhibits a severe server-side latency anomaly (server-span p99 mean ~5700ms, peaking at ~9650ms vs a ~2ms baseline) while its error rate, CPU usage and pod restarts all remain normal. Its only downstream dependency (quote) stays healthy at ~1.98ms, isolating the abnormal delay to shipping itself, which then propagates upstream to frontend and checkout.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=5700.15ms p50=4952.5 p95=9510 p99=9622 max=9650 at 08:09-08:16",
+          "expected_baseline": "p99 ~2ms (shipping server-span baseline)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=1.980ms p99=1.980ms (flat, healthy)",
+          "expected_baseline": "~2ms (quote server-span baseline)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.004, max=0.012 (normal)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "mean=0.002 (flat, normal)",
+          "expected_baseline": "cpu usage ~0.002 (no spike)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[5m])) or vector(0)",
+          "observed_value": "0 restarts",
+          "expected_baseline": "0 restarts (no crash loop)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout depends on shipping and calls it during the order flow; the shipping latency injection propagates upward causing elevated checkout end-to-end latency. Checkout itself shows no independent resource or error anomaly, so this is propagated latency rather than a checkout-origin fault.",
+      "confidence": 0.35,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "shipping p99 ~5700ms mean, peak 9650ms; propagated to upstream checkout",
+          "expected_baseline": "checkout latency near baseline when shipping healthy (~2ms)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Frontend calls shipping directly and via checkout; the injected shipping delay surfaces as increased frontend tail latency. Frontend error rate remains normal (~0.004), indicating it is a victim of upstream latency propagation rather than the source.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.004, max=0.019 (normal error rate)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect flagd configuration and the shipping Deployment for an active latency fault-injection / delay flag and disable or roll back it.",
+    "Restart the shipping Deployment/pods to clear any injected in-process delay, then verify shipping server-span p99 returns to ~2ms.",
+    "Validate end-to-end checkout and frontend latency returns to baseline after shipping is restored."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 17.770049,
+  "cost_usd": 0.00159975,
+  "total_prompt_tokens": 5269,
+  "total_completion_tokens": 1349,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

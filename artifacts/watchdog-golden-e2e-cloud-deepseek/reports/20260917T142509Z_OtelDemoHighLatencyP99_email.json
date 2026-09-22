@@ -1,0 +1,102 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-e972d4f8",
+  "investigation_start_ts": "2026-09-17T14:24:39.208113+00:00",
+  "investigation_end_ts": "2026-09-17T14:25:09.555089+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "high_latency",
+      "description": "The payment service is a leaf dependency exhibiting a flat ~10s (10000ms) p99 server latency with no errors, normal CPU and memory, and no restarts. This injected latency propagates upstream, driving checkout, frontend and frontend-proxy to the same 10000ms p99 ceiling.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "payment p99=10000.000 ms (flat, mean=p50=p95=p99=max=10000.000 across window)",
+          "expected_baseline": "payment p99 < 100ms (leaf, no downstream calls)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.007, max=0.007 — no spike",
+          "expected_baseline": "no cpu saturation; low and flat"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"payment-.*\"})",
+          "observed_value": "memory=202543104 bytes (~202MB), no anomaly",
+          "expected_baseline": "stable ~200MB, rules out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) by (service_name)",
+          "observed_value": "payment error_rate=0.000 (no errors emitted)",
+          "expected_baseline": "near-zero; rules out http_abort / dependency_failure"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "1934428e7faa572e",
+          "observed_value": "user_checkout_single trace duration=34117ms, status=ok; search p95_duration=348073ms, 0 errors",
+          "expected_baseline": "checkout traces normally < 1s"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Updated: Successfully update ObservedGeneration and FailedMessage of resource",
+          "observed_value": "only benign 'Updated' events for payment pod; no OOMKilled/BackOff/FailedMount",
+          "expected_baseline": "no crash/kill events, rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout shows the same flat 10000ms p99, but as a caller of payment it more likely reflects inherited latency from payment rather than an internal fault. Cannot be fully excluded as the injection point.",
+      "confidence": 0.12,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99=10000.000 ms (mean=p50=p95=p99=max=10000.000)",
+          "expected_baseline": "checkout p99 < 500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate=0.000",
+          "expected_baseline": "near-zero; no errors despite latency"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend and frontend-proxy also show the 10000ms p99 ceiling, but these are the outermost callers and most consistent with propagated downstream latency rather than an injected fault.",
+      "confidence": 0.06,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "frontend p99=10000.000 ms, frontend-proxy p99=10000.000 ms",
+          "expected_baseline": "frontend p99 < 1s"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the payment service deployment/config for an injected latency fault (e.g., flagd latency fault or artificial sleep) and remove/disable it.",
+    "Restart or roll back the payment service pods to clear the faulted state, then verify payment p99 returns below 100ms.",
+    "Add/verify client-side timeouts and circuit breakers between checkout and payment so a slow payment dependency cannot stall checkout and drag frontend p99 to the 10s ceiling.",
+    "Monitor payment p99 and checkout p99 dashboards to confirm recovery and prevent recurrence."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.85,
+  "latency_s": 30.346976,
+  "cost_usd": 0.00348635,
+  "total_prompt_tokens": 5842,
+  "total_completion_tokens": 1373,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

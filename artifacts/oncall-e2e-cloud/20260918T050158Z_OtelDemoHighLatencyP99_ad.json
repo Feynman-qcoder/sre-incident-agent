@@ -1,0 +1,108 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-5735b782",
+  "investigation_start_ts": "2026-09-18T05:01:22.364971+00:00",
+  "investigation_end_ts": "2026-09-18T05:01:58.657044+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "product-catalog is consuming ~2.0 CPU cores while every peer service sits at <=0.02 cores, saturating its CPU and inflating response times toward the 10s timeout ceiling. Because frontend, checkout, and recommendation all depend on product-catalog (checkout -> product-catalog, frontend -> product-catalog, recommendation -> product-catalog), their p99 latency is driven to 10000ms, producing the high-latency alert.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=2.019 cores, max=2.149 cores",
+          "expected_baseline": "peer services same window: frontend=0.014, recommendation=0.012, checkout=0.002 cores"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000ms (mean=p50=p95=p99=10000)",
+          "expected_baseline": "p99 < 100ms (normal downstream latency)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=33243136 bytes (~33MB), max=37031936",
+          "expected_baseline": "no memory growth; rules out memory_stress"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "frontend p99 is pinned at the 10s ceiling across user-facing operations; this is a propagated symptom of the product-catalog CPU saturation rather than a frontend-internal fault, since frontend CPU and memory are normal and it has no errors.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000ms (mean=p50=p95=p99=10000)",
+          "expected_baseline": "p99 < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.014 cores (normal)",
+          "expected_baseline": "no CPU pressure on frontend"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "a31ee38aa231d2aa",
+          "observed_value": "user_browse_product span duration=14999ms, status ok",
+          "expected_baseline": "user operations < 200ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "checkout p99 is at 10000ms with slow spans, but its own CPU/memory are normal and all other downstream dependencies (payment, shipping, cart, currency, email) are healthy, so the latency is inherited from the slow product-catalog dependency.",
+      "confidence": 0.4,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000ms",
+          "expected_baseline": "p99 < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "mean=0.002 cores (normal)",
+          "expected_baseline": "no resource pressure on checkout"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=1.980ms (healthy)",
+          "expected_baseline": "normal downstream latency"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "c73353b34a140423",
+          "observed_value": "user_checkout_single span duration=28135ms, status ok, 0 errors",
+          "expected_baseline": "checkout < 500ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect per-pod CPU throttling (container_cpu_cfs_throttled_seconds_total) and node pressure for product-catalog pod (product-catalog-5bb7676754-hcfpv) to confirm CPU saturation.",
+    "Scale product-catalog horizontally and/or raise its CPU limit to relieve the ~2-core saturation so p99 returns below 100ms.",
+    "If externally induced, disable the CPU-stress fault injection on product-catalog (chaos/flagd target) and confirm CPU returns to <0.05 cores.",
+    "Verify frontend, checkout, and recommendation p99 recover once product-catalog is healthy."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.9,
+  "latency_s": 36.292073,
+  "cost_usd": 0.0056007,
+  "total_prompt_tokens": 8658,
+  "total_completion_tokens": 2448,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

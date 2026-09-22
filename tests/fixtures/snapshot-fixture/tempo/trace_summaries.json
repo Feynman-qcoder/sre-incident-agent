@@ -1,0 +1,20 @@
+[
+  {
+    "traceID": "t-checkout-err-1",
+    "rootServiceName": "checkout",
+    "durationMs": 1200,
+    "hasError": true
+  },
+  {
+    "traceID": "t-checkout-ok-1",
+    "rootServiceName": "checkout",
+    "durationMs": 80,
+    "hasError": false
+  },
+  {
+    "traceID": "t-frontend-1",
+    "rootServiceName": "frontend",
+    "durationMs": 300,
+    "hasError": true
+  }
+]

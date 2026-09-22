@@ -1,0 +1,52 @@
+{
+ "ts": "2026-09-17T08:20:32.710899+00:00",
+ "p99_now_ms": {
+  "currency": "1.98",
+  "shipping": "1.98",
+  "flagd": "1.9852941176470589",
+  "ad": "4.430000000000005",
+  "checkout": "10000",
+  "product-catalog": "10000",
+  "recommendation": "9600",
+  "cart": "1.98",
+  "frontend": "10000",
+  "quote": "1.98",
+  "payment": "1.98",
+  "email": "4.97",
+  "frontend-proxy": "10000"
+ },
+ "p99_ref_ms": {
+  "quote": "1.98",
+  "product-catalog": "9.543103448275863",
+  "flagd": "1.9818504672897197",
+  "ad": "1.98",
+  "checkout": "24.85",
+  "payment": "1.98",
+  "email": "9.149999999999995",
+  "recommendation": "4.97",
+  "cart": "1.98",
+  "frontend-proxy": "24.876250000000013",
+  "frontend": "24.53653846153845",
+  "currency": "1.9800000000000002",
+  "shipping": "4.489999999999997"
+ },
+ "ratio": {
+  "ad": "2.23737373737374",
+  "email": "0.5431693989071041",
+  "recommendation": "1931.5895372233401",
+  "frontend-proxy": "401.98984975629344",
+  "frontend": "407.5554510541581",
+  "currency": "0.9999999999999999",
+  "checkout": "402.41448692152915",
+  "payment": "1",
+  "product-catalog": "1047.877145438121",
+  "cart": "1",
+  "shipping": "0.4409799554565705",
+  "flagd": "1.0017375934330952",
+  "quote": "1"
+ },
+ "error_ratio": {
+  "flagd": "0",
+  "frontend-proxy": "0.08839779005524863"
+ }
+}

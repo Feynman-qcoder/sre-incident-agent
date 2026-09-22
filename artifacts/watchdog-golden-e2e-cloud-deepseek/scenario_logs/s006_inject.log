@@ -1,0 +1,12 @@
+2026-09-17 22:30:13 [info     ] injecting_fault                dry_run=False fault_service=shipping fault_type=high_latency scenario_id=shipping-high_latency-seed42
+2026-09-17 22:30:13 [info     ] waiting_for_fault_duration     seconds=300
+2026-09-17 22:35:13 [info     ] snapshotting_telemetry         end=2026-09-17T14:36:13.426521+00:00 start=2026-09-17T14:29:13.199768+00:00
+2026-09-17 22:35:13 [info     ] snapshotting_metrics           services=15
+2026-09-17 22:35:14 [info     ] snapshotting_traces            services=15
+2026-09-17 22:35:16 [info     ] fetching_full_traces           count=5
+2026-09-17 22:35:16 [info     ] snapshotting_logs              services=15
+2026-09-17 22:35:16 [info     ] snapshotting_k8s_events        namespace=otel-demo
+2026-09-17 22:35:16 [info     ] snapshot_complete              output_dir=snapshots/shipping-high_latency-seed42
+2026-09-17 22:35:16 [info     ] snapshot_validation_pass       fault_over_baseline=1622.39 fault_type=high_latency fault_value=4857.0 rank_by_ratio=1 service=shipping signal=p99_latency_ms
+2026-09-17 22:35:16 [info     ] ground_truth_written           path=snapshots/shipping-high_latency-seed42/ground_truth.json validation_passed=True
+2026-09-17 22:35:16 [info     ] injection_complete             output_dir=snapshots/shipping-high_latency-seed42 scenario_id=shipping-high_latency-seed42

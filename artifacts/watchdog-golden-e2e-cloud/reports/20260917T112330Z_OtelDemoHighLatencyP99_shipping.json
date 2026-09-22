@@ -1,0 +1,132 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-b699fe05",
+  "investigation_start_ts": "2026-09-17T11:16:48.509803+00:00",
+  "investigation_end_ts": "2026-09-17T11:23:30.454474+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "The shipping service exhibits a severe p99 latency spike (~4.7s vs ~2ms p50 baseline) with zero errors and no CPU/memory stress, and its only downstream dependency (quote) is clean at 1.98ms — the delay originates inside shipping itself. Checkout's p99 (~9.5s) is almost exactly 2x shipping's p99 plus ~130ms (checkout makes two sequential shipping RPCs: GetQuote and ShipOrder), and frontend's p99 (~4.8s) is 1x shipping's p99 plus ~130ms, confirming shipping as the origin of the latency propagation chain.",
+      "confidence": 0.8,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=4684.879ms, p95=3904.396ms, p50=1.98ms, max=4880ms, anomaly detected",
+          "expected_baseline": "p99 < 5ms (p50=1.98ms in same window; shipping is a lightweight quote/ship gRPC service)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=1.980ms, no anomaly detected",
+          "expected_baseline": "quote is shipping's only dependency and is healthy, so shipping's slow server spans are not caused downstream"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "mean=0.001 cores, max=0.001 cores, no anomaly detected",
+          "expected_baseline": "latency is not resource-driven (no CPU stress on shipping pods)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=shipping min_duration_ms=3000 (2026-09-17T11:14:40Z → 2026-09-17T11:16:48Z)",
+          "observed_value": "13 traces, 0 with errors; top traces: 72591d781c3737cf order-consumed 13820ms, 11b3809addc2a1c2 order-consumed 3286ms, c766a4e788deb814 user_checkout_single 8882ms",
+          "expected_baseline": "shipping spans normally complete in ~2ms; slow-but-successful traces confirm pure latency, not failures"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events namespace=otel-demo pod_name_prefix=shipping since_seconds=600",
+          "observed_value": "Only routine event: 'Updated: Successfully update ObservedGeneration and FailedMessage of resource (count=1)'; no OOMKilled/BackOff/crash events",
+          "expected_baseline": "No crash-loop or resource-pressure events for shipping pods"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout shows the highest absolute p99 (~9.5s vs 24.85ms p50), but its latency profile is fully explained by propagation from the slow shipping dependency: checkout p95/p99/max (7924/9504/9900ms) equal 2x shipping's p95/p99/max (3904/4684/4880ms) plus a constant ~120-140ms, matching checkout's two sequential shipping RPCs. No errors, no CPU/memory stress, no restarts, and no error logs, so a checkout-local fault is the less likely alternative hypothesis.",
+      "confidence": 0.45,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=9504.994ms, p95=7924.970ms, p50=24.850ms, max=9900ms, anomaly detected",
+          "expected_baseline": "p99 < 100ms (p50=24.85ms in same window)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across the entire window, no anomaly detected",
+          "expected_baseline": "error_rate=0 — confirms latency-only fault, not http_abort"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "mean=0.004 cores, max=0.006 cores, no anomaly detected",
+          "expected_baseline": "no CPU stress; rules out cpu_stress as cause of checkout latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "mean=24713625.6 bytes (~24.7MB), max=25489408 bytes, no anomaly detected",
+          "expected_baseline": "stable ~24-25MB working set; rules out memory_stress"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=checkout min_duration_ms=5000 (2026-09-17T11:14:40Z → 2026-09-17T11:16:48Z)",
+          "observed_value": "12 traces, 0 with errors; top traces: 72591d781c3737cf order-consumed 13820ms, c766a4e788deb814 user_checkout_single 8882ms, 7a82a28563ce7d9b user_checkout_single 9159ms",
+          "expected_baseline": "checkout traces normally complete in tens of ms; all slow traces are 'ok' status"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"error\"",
+          "observed_value": "no logs found in the incident window",
+          "expected_baseline": "no application errors logged, consistent with latency-only fault"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events namespace=otel-demo pod_name_prefix=checkout since_seconds=600",
+          "observed_value": "[no K8s events found]",
+          "expected_baseline": "no crash/restart events; rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend p99 rose to ~4.8s (p50 32.9ms), which is propagated latency: frontend's slow requests equal one shipping call (~4.7s) plus ~130ms overhead, and its checkout-dependent requests inherit checkout's ~9.5s. Frontend is a victim of the downstream shipping latency, not the origin.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=4825.350ms, p95=4026.750ms, p50=32.875ms, max=5025ms, anomaly detected",
+          "expected_baseline": "p99 < 100ms (p50=32.875ms in same window)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=1.980ms, no anomaly detected",
+          "expected_baseline": "payment (another checkout dependency) is healthy, isolating the latency source to shipping"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Remove the latency fault injection on the shipping service: check flagd feature-flag/experiment configuration and any Chaos Mesh network-delay or app-level delay experiment targeting the shipping deployment, then roll it back.",
+    "Add strict gRPC deadlines/timeouts on checkout's calls to shipping (GetQuote and ShipOrder) and cache shipping quotes so a slow shipping dependency cannot inflate checkout and frontend p99.",
+    "Configure latency SLO alerts (e.g., shipping p99 > 500ms for 2 minutes) and circuit-breaking for repeated slow shipping calls from checkout and frontend.",
+    "After mitigation, verify recovery: shipping p99 should return to ~2ms, and checkout/frontend p99 should fall back below 100ms."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 401.944671,
+  "cost_usd": 0.0049602,
+  "total_prompt_tokens": 6972,
+  "total_completion_tokens": 2400,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

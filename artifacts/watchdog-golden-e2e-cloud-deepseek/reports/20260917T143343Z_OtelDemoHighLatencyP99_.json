@@ -1,0 +1,103 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-c2dddb31",
+  "investigation_start_ts": "2026-09-17T14:32:36.486945+00:00",
+  "investigation_end_ts": "2026-09-17T14:33:43.808259+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "Shipping's server-side latency p99 spiked to ~9.2s (p50 still normal at 1.98ms), and its outbound CLIENT span to quote (p99=9.36s) is equally slow while quote's own SERVER span remains 1.98ms — the delay sits in the shipping outbound call path, propagating up to checkout and frontend.",
+      "confidence": 0.68,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=9168 ms (mean=1911.6, p50=1.98, p95=7640, max=9550) with anomaly window flagged",
+          "expected_baseline": "p99 < 50 ms (peer leaf services payment/cart/currency/quote = 1.98 ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_CLIENT\"}[2m])) by (le))",
+          "observed_value": "p99=9360 ms (mean=1951.6, p50=1.98, max=9750) — outbound call to quote is delayed",
+          "expected_baseline": "client p99 ~= downstream server p99 < 10 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "quote SERVER p99=1.98 ms (flat, no anomaly) — the delay is NOT inside quote's processing",
+          "expected_baseline": "1.98 ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=shipping min_duration_ms=3000",
+          "observed_value": "9 traces, 0 errors, p95_duration=58915 ms; slowest spans 'user_checkout_single' 8931ms and 'order-consumed' 42951ms",
+          "expected_baseline": "shipping/checkout traces < 200 ms, 0 slow spans"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout shows elevated latency (SERVER p99=9.58s, CLIENT p99=8.87s, median p50=1950ms) consistent with being the immediate upstream caller of the delayed shipping dependency; it is the propagation point rather than the origin.",
+      "confidence": 0.19,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=9582.8 ms (mean=2773.9, p50=1950, p95=8314) with anomaly window flagged",
+          "expected_baseline": "p99 < 100 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_CLIENT\"}[2m])) by (le))",
+          "observed_value": "CLIENT p99=8866 ms (p50=1580) — slow outbound (shipping) call",
+          "expected_baseline": "client p99 < 50 ms"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"error\"",
+          "observed_value": "no logs found (no error output — pure latency, not error fault)",
+          "expected_baseline": "0 error logs"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "quote",
+      "fault_type": "dependency_failure",
+      "description": "Quote is shipping's only downstream, and the shipping↔quote client span is delayed while quote's own server span is fast — consistent with a network/edge latency fault affecting the quote call path rather than quote compute.",
+      "confidence": 0.13,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=1.98 ms (no anomaly) — server processing healthy",
+          "expected_baseline": "1.98 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no errors; latency-only edge issue)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect/restart the shipping service pods to clear any injected network delay or connection hang on the shipping→quote egress path (no crash/OOM events observed).",
+    "Check Chaos Mesh tc netem or flagd feature-flag latency injection targeting shipping (or the shipping↔quote edge) and disable it.",
+    "Verify network policy/DNS/connection-pool health between shipping and quote; the client span is slow while quote's server span is 1.98ms.",
+    "Confirm checkout and frontend latency recover once shipping latency normalizes (they are downstream propagation only).",
+    "Add an alert on shipping SERVER/CLIENT p99 latency (>50ms) to catch tail latency before the global P99 watchdog fires."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.8,
+  "latency_s": 67.321314,
+  "cost_usd": 0.0056105,
+  "total_prompt_tokens": 11323,
+  "total_completion_tokens": 1569,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

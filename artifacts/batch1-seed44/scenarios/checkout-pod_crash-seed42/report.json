@@ -1,0 +1,95 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T09:27:43.762459+00:00",
+  "investigation_end_ts": "2026-09-18T09:28:04.961666+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "A deployment spec change killed the checkout container ('Container checkout definition changed, will be restarted'); its replacement pod cannot start because the sandbox image gcr.io/google-containers/pause:latest fails to pull (DeadlineExceeded → ErrImagePull/ImagePullBackOff), leaving checkout in a crash-loop back-off and serving no traffic.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+          "observed_value": "count=1 container kill event during window",
+          "expected_baseline": "no container kill / definition-change events under steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a",
+          "observed_value": "count=2 (+1) sandbox image pull failures",
+          "expected_baseline": "pause/sandbox image already present; no image pull failures"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\"",
+          "observed_value": "count=4 back-off events; ImagePullBackOff count=4; ErrImagePull count=3",
+          "expected_baseline": "0 back-off events"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.018, max=0.057 req/s (checkout not serving) at 07:34-07:41",
+          "expected_baseline": "frontend carries ~7.6-8.6 req/s in the same window; checkout expected in the same order of magnitude"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Alternative interpretation: checkout traffic collapses because a downstream dependency (cart, payment, shipping, currency, product-catalog) is failing. Not supported — checkout emits zero server errors and no error logs, and the pod events show a container start failure rather than downstream call failures.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000, max=0.000 error rate at 07:34-07:41",
+          "expected_baseline": "a downstream-dependency failure would surface as checkout server errors > 0"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "dependency failures produce downstream error logs — none emitted, consistent with a non-running container"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "Alternative interpretation: the frontend (upstream caller of checkout) originates the incident. Rejected — frontend request rate stays healthy and its error rate is low and non-anomalous, so it is a victim/observer rather than the cause.",
+      "confidence": 0.03,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=7.594, max=8.612 req/s (healthy, no anomaly)",
+          "expected_baseline": "no anomaly detected across the window"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.063, max=0.171 error rate (low, no anomaly)",
+          "expected_baseline": "frontend error_rate < 0.01 sustained indicates a real fault"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Roll back the checkout Deployment to the previous working container definition — the event 'Container checkout definition changed, will be restarted' shows a recent spec change triggered the kill.",
+    "Fix the sandbox image pull failure: pulls of gcr.io/google-containers/pause:latest fail with DeadlineExceeded — verify registry/DNS connectivity, use an accessible mirror or pre-seed the pause image on the node, or set imagePullPolicy: IfNotPresent.",
+    "Restart/verify the checkout pod becomes Ready and confirm checkout server request rate returns to the normal order of magnitude (~7+ req/s) matching frontend traffic."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.625,
+  "latency_s": 21.199207,
+  "cost_usd": 0.001722,
+  "total_prompt_tokens": 5828,
+  "total_completion_tokens": 1413,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

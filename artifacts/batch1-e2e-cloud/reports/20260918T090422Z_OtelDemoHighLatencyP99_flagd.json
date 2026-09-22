@@ -1,0 +1,120 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-6db6d1e6",
+  "investigation_start_ts": "2026-09-18T09:03:50.936451+00:00",
+  "investigation_end_ts": "2026-09-18T09:04:22.983444+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "The recommendation service's server-side p99 latency is pinned at the 10000ms histogram ceiling and its request spans run ~15s while reporting zero errors and showing no CPU, memory, or restart anomalies, indicating injected/processing latency within recommendation itself. This latency propagates upstream to frontend, which depends on recommendation, producing the cluster-wide P99 latency watchdog alert.",
+      "confidence": 0.83,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000ms (pinned at histogram ceiling); mean/p50/p95/p99/max all 10000ms",
+          "expected_baseline": "p99 < 100ms under normal load"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.011, max=0.029 (very low throughput despite long spans)",
+          "expected_baseline": "stable request rate; saturation would show elevated concurrency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.012 cores, max=0.013",
+          "expected_baseline": "steady-state ~0.01 cores — no CPU saturation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "memory_usage ~187.3MB (mean 187270758.4 bytes), flat",
+          "expected_baseline": "no memory growth / no OOM pressure"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0",
+          "expected_baseline": "0 restarts (no crash loop)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "a3395c15aa0787f6",
+          "observed_value": "recommendation span user_get_recommendations duration=15000ms, status ok; 20 traces sampled, 0 errors, p95_duration=45011ms",
+          "expected_baseline": "recommendation span p95 < 200ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000ms — same ceiling, latency propagated upstream to frontend",
+          "expected_baseline": "frontend p99 < 500ms"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend also shows p99 pinned at the 10000ms ceiling, but as a caller of recommendation its latency is most plausibly a propagated symptom rather than an independent fault; retained only as an alternative if recommendation latency were a downstream observation.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000ms across window",
+          "expected_baseline": "frontend p99 < 500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.008, max=0.019 (negligible)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "product-catalog",
+      "fault_type": "dependency_failure",
+      "description": "Recommendation depends on product-catalog; a slow product-catalog could block recommendation and produce its pinned latency. However, no independent product-catalog error/latency signal could be isolated, so this remains a lower-probability alternative.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "a3395c15aa0787f6",
+          "observed_value": "product-catalog search returned 20 traces, 0 errors, p95_duration=16505ms with same 15000ms recommendation spans",
+          "expected_baseline": "product-catalog span p95 < 200ms; error-free downstream does not explain pinned 10000ms ceiling"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"recommendation\"} |= \"error\"",
+          "observed_value": "[no logs found] — no error propagation from any downstream",
+          "expected_baseline": "dependency failures typically emit error logs"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Scale out the recommendation deployment (increase replicas / CPU-memory headroom) to relieve request handling producing ~15s server spans.",
+    "Instrument the recommendation → product-catalog client-span path to confirm whether recommendation is blocked on a slow downstream dependency rather than its own processing.",
+    "Inspect recommendation runtime config (e.g. flagd feature flags / injected latency) for a fixed delay pinning p99 at the 10000ms histogram ceiling.",
+    "Add latency SLO alerts on recommendation specifically (p99 > 1s) so the fault is attributed at origin rather than only at the frontend/global watchdog level."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.85,
+  "latency_s": 32.046993,
+  "cost_usd": 0.0046445,
+  "total_prompt_tokens": 6796,
+  "total_completion_tokens": 2158,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,3 @@
+pod/alertmanager-prometheus-kube-prometheus-alertmanager-0   2/2     Running   0              44m
+service/alertmanager-operated                     ClusterIP   None            <none>        9093/TCP,9094/TCP,9094/UDP                                                                                                                                                  44m
+service/prometheus-kube-prometheus-alertmanager   NodePort    10.96.128.163   <none>        9093:30903/TCP,8080:30279/TCP                                                                                                                                               44m

@@ -1,0 +1,25 @@
+=========== product-catalog-high_latency-seed42 | 2026-09-16T07:46:32.629994+00:00 -> 2026-09-16T07:53:32.849172+00:00 ===========
+2026-09-16 19:52:39 [info     ] tool_call                      iteration=2 name=get_pod_events
+2026-09-16 19:53:00 [info     ] report_written                 path=/root/live/product-catalog-high_latency-seed42.json
+2026-09-16 19:53:00 [info     ] investigation_complete         cost_usd=0.00342405 incident_id=product-catalog-high_latency-seed42-live latency_s=31.28467 top_fault_type=high_latency top_service=product-catalog
+=========== payment-http_abort-seed42 | 2026-09-16T07:51:35.039063+00:00 -> 2026-09-16T07:58:35.271496+00:00 ===========
+2026-09-16 19:54:19 [info     ] tool_call                      iteration=4 name=query_prometheus_range
+2026-09-16 19:54:52 [info     ] report_written                 path=/root/live/payment-http_abort-seed42.json
+2026-09-16 19:54:52 [info     ] investigation_complete         cost_usd=0.0062069 incident_id=payment-http_abort-seed42-live latency_s=108.213459 top_fault_type=http_abort top_service=payment
+=========== recommendation-cpu_stress-seed42 | 2026-09-16T07:56:38.043393+00:00 -> 2026-09-16T08:03:38.269881+00:00 ===========
+2026-09-16 19:55:06 [warning  ] tool_error                     error="HTTPSConnectionPool(host='127.0.0.1', port=42909): Max retries exceeded with url: /api/v1/namespaces/otel-demo/events (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))" tool=get_pod_events
+2026-09-16 19:55:18 [info     ] report_written                 path=/root/live/recommendation-cpu_stress-seed42.json
+2026-09-16 19:55:18 [info     ] investigation_complete         cost_usd=0.00297955 incident_id=recommendation-cpu_stress-seed42-live latency_s=20.485675 top_fault_type=cpu_stress top_service=recommendation
+=========== cart-memory_stress-seed42 | 2026-09-16T08:03:12.954977+00:00 -> 2026-09-16T08:10:13.183568+00:00 ===========
+2026-09-16 19:55:32 [warning  ] tool_error                     error="HTTPSConnectionPool(host='127.0.0.1', port=42909): Max retries exceeded with url: /api/v1/namespaces/otel-demo/events (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))" tool=get_pod_events
+2026-09-16 19:55:47 [info     ] report_written                 path=/root/live/cart-memory_stress-seed42.json
+2026-09-16 19:55:47 [info     ] investigation_complete         cost_usd=0.0028714 incident_id=cart-memory_stress-seed42-live latency_s=25.022055 top_fault_type=memory_stress top_service=cart
+=========== shipping-high_latency-seed42 | 2026-09-16T08:09:46.968916+00:00 -> 2026-09-16T08:16:47.199366+00:00 ===========
+2026-09-16 19:56:02 [info     ] tool_call                      iteration=2 name=query_loki
+2026-09-16 19:56:14 [info     ] report_written                 path=/root/live/shipping-high_latency-seed42.json
+2026-09-16 19:56:14 [info     ] investigation_complete         cost_usd=0.0030982 incident_id=shipping-high_latency-seed42-live latency_s=23.217783 top_fault_type=high_latency top_service=shipping
+=========== frontend-pod_crash-seed42 | 2026-09-16T08:14:49.604059+00:00 -> 2026-09-16T08:21:49.827146+00:00 ===========
+2026-09-16 19:57:18 [info     ] tool_call                      iteration=5 name=query_prometheus_instant
+2026-09-16 19:57:31 [info     ] report_written                 path=/root/live/frontend-pod_crash-seed42.json
+2026-09-16 19:57:31 [info     ] investigation_complete         cost_usd=0.0047376 incident_id=frontend-pod_crash-seed42-live latency_s=73.897617 top_fault_type=pod_crash top_service=frontend
+ALL_DONE

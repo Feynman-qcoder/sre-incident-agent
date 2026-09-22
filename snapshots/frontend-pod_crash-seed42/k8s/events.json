@@ -1,0 +1,65 @@
+[
+  {
+    "type": "Normal",
+    "reason": "Killing",
+    "message": "Stopping container frontend",
+    "count": 1,
+    "first_time": "2026-09-16 08:15:49+00:00",
+    "last_time": "2026-09-16 08:15:49+00:00",
+    "involved_object_name": "frontend-76cbddfbcc-qdm8x"
+  },
+  {
+    "type": "Normal",
+    "reason": "Scheduled",
+    "message": "Successfully assigned otel-demo/frontend-76cbddfbcc-zm8l8 to otel-sre-copilot-control-plane",
+    "count": 1,
+    "first_time": "2026-09-16 08:15:49+00:00",
+    "last_time": "2026-09-16 08:15:49+00:00",
+    "involved_object_name": "frontend-76cbddfbcc-zm8l8"
+  },
+  {
+    "type": "Normal",
+    "reason": "Pulled",
+    "message": "Container image \"ghcr.io/open-telemetry/demo:3.0.0-frontend\" already present on machine and can be accessed by the pod",
+    "count": 1,
+    "first_time": "2026-09-16 08:15:50+00:00",
+    "last_time": "2026-09-16 08:15:50+00:00",
+    "involved_object_name": "frontend-76cbddfbcc-zm8l8"
+  },
+  {
+    "type": "Normal",
+    "reason": "Created",
+    "message": "Container created",
+    "count": 1,
+    "first_time": "2026-09-16 08:15:50+00:00",
+    "last_time": "2026-09-16 08:15:50+00:00",
+    "involved_object_name": "frontend-76cbddfbcc-zm8l8"
+  },
+  {
+    "type": "Normal",
+    "reason": "Started",
+    "message": "Container started",
+    "count": 1,
+    "first_time": "2026-09-16 08:15:50+00:00",
+    "last_time": "2026-09-16 08:15:50+00:00",
+    "involved_object_name": "frontend-76cbddfbcc-zm8l8"
+  },
+  {
+    "type": "Normal",
+    "reason": "SuccessfulCreate",
+    "message": "Created pod: frontend-76cbddfbcc-zm8l8",
+    "count": 1,
+    "first_time": "2026-09-16 08:15:49+00:00",
+    "last_time": "2026-09-16 08:15:49+00:00",
+    "involved_object_name": "frontend-76cbddfbcc"
+  },
+  {
+    "type": "Normal",
+    "reason": "Updated",
+    "message": "Successfully update ObservedGeneration and FailedMessage of resource",
+    "count": 1,
+    "first_time": "2026-09-16 08:15:47+00:00",
+    "last_time": "2026-09-16 08:15:47+00:00",
+    "involved_object_name": "shipping-5df7c5d696-2bchz"
+  }
+]

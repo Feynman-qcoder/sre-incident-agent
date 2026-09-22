@@ -1,0 +1,24 @@
+{
+  "fingerprints": {
+    "195e11da": {
+      "alertname": "KubePodNotReady",
+      "service": "572wp",
+      "last_investigated_at": "2026-09-16T13:44:06.452591+00:00"
+    },
+    "88f37cbc": {
+      "alertname": "KubeDeploymentReplicasMismatch",
+      "service": "state",
+      "last_investigated_at": "2026-09-16T13:45:57.611318+00:00"
+    },
+    "316567f7": {
+      "alertname": "KubePodCrashLooping",
+      "service": "572wp",
+      "last_investigated_at": "2026-09-16T13:48:48.820591+00:00"
+    }
+  },
+  "recent_investigations": [
+    "2026-09-16T13:44:06.452591+00:00",
+    "2026-09-16T13:45:57.611318+00:00",
+    "2026-09-16T13:48:48.820591+00:00"
+  ]
+}

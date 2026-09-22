@@ -1,0 +1,13 @@
+{
+  "scenario_id": "frontend-pod_crash-seed42",
+  "fault_service": "frontend",
+  "fault_type": "pod_crash",
+  "chaos_kind": "PodChaos",
+  "injection_ts": "2026-09-16T08:15:49.604059+00:00",
+  "recovery_ts": "2026-09-16T08:20:49.827146+00:00",
+  "seed": 42,
+  "chaos_manifest_hash": "feed1acecec8c67b",
+  "window_start": "2026-09-16T08:14:49.604059+00:00",
+  "window_end": "2026-09-16T08:21:49.827146+00:00",
+  "validation_passed": true
+}

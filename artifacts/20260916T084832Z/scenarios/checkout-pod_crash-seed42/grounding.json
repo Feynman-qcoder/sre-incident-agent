@@ -1,0 +1,22 @@
+{
+  "grounding_score": 0.6,
+  "verified": 3,
+  "total": 5,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=1)",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=4); Failed: Error: ImagePullBackOff (count=4)",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": true
+}

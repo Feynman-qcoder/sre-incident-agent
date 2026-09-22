@@ -1,0 +1,121 @@
+{
+  "incident_id": "frontend-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T09:19:03.472517+00:00",
+  "investigation_end_ts": "2026-09-18T09:21:08.295080+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog is the sole shared downstream of the three services displaying the 10s p99 spike (frontend, checkout, recommendation) and is the only component with a resource anomaly (CPU ~1.93 cores, ~100x its peers). Its degraded request handling inflates the server-span p99 of every caller to the 10s ceiling, surfacing as high latency at the user-facing frontend.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=p95=p99=max=10000 ms",
+          "expected_baseline": "p99 < 10 ms (leaf peers cart/ad ~4-5 ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=p95=p99=max=10000 ms (checkout calls product-catalog)",
+          "expected_baseline": "p99 < 10 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=p95=p99=max=10000 ms (recommendation calls product-catalog)",
+          "expected_baseline": "p99 < 10 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=2.291, p99=4.353, max=4.370 ms (cart is a leaf, not behind product-catalog -> unaffected)",
+          "expected_baseline": "p99 < 10 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"ad\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=2.661, p99=4.940, max=4.940 ms (ad is a leaf -> unaffected)",
+          "expected_baseline": "p99 < 10 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=1.934 cores, max=2.240 cores",
+          "expected_baseline": "peer services ~0.012-0.021 cores (frontend 0.015, checkout 0.021, recommendation 0.012)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.006, max=0.029 (no error anomaly)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "Alternative reading: the ~1.93-core CPU burn at product-catalog (vs ~0.01 cores for peers) is a classic CPU-stress injection signature; CPU starvation then makes product-catalog slow, producing the 10s p99 seen at all of its callers. Same root service, different injected-mechanism label.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=1.934 cores, max=2.240 cores (~100x peer services)",
+          "expected_baseline": "~0.02 cores (checkout 0.021, recommendation 0.012, frontend 0.015)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.015 cores (normal; frontend is not CPU-bound)",
+          "expected_baseline": "~0.015 cores"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000 ms (latency consequence of product-catalog CPU starvation)",
+          "expected_baseline": "p99 < 10 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "If the incident label names the alerting/symptom service rather than the injection target, frontend itself exhibits the latency spike (p99=10s) that generated the alert. This is the user-visible surface, but topology shows frontend is an upstream caller, not the origin of the delay.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000 ms",
+          "expected_baseline": "p99 < 10 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.015 cores (frontend is NOT resource-saturated; argues against a frontend-local fault)",
+          "expected_baseline": "~0.015 cores"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog pods for injected stress/chaos (CPU throttling, StressChaos) and remove the fault once identified (kubectl top pod -n otel-demo; describe pod for chaos annotations).",
+    "Check product-catalog resource limits/requests and CPU throttling; raise CPU limit or scale replicas if the saturation is organic, since catalog is the shared hot path for frontend, checkout and recommendation.",
+    "If latency is injected rather than CPU-bound, remove the latency injection on the product-catalog service/pod network path.",
+    "Add caching / reduce per-request catalog work in product-catalog to lower its baseline CPU.",
+    "Validate recovery by confirming frontend, checkout and recommendation p99 latencies return below ~10 ms and product-catalog CPU returns to ~0.02 cores."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 124.822563,
+  "cost_usd": 0.00268935,
+  "total_prompt_tokens": 8129,
+  "total_completion_tokens": 2450,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

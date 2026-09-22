@@ -1,0 +1,54 @@
+NAME                              READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS        IMAGES                                                                          SELECTOR
+deployment.apps/accounting        1/1     1            1           6h27m   accounting        ghcr.io/open-telemetry/demo:3.0.0-accounting                                    opentelemetry.io/name=accounting
+deployment.apps/ad                1/1     1            1           6h27m   ad                ghcr.io/open-telemetry/demo:3.0.0-ad                                            opentelemetry.io/name=ad
+deployment.apps/agent             1/1     1            1           6h27m   agent             ghcr.io/open-telemetry/demo:3.0.0-agent                                         opentelemetry.io/name=agent
+deployment.apps/astronomy-db      1/1     1            1           6h27m   astronomy-db      postgres:18.4                                                                   opentelemetry.io/name=astronomy-db
+deployment.apps/cart              1/1     1            1           6h27m   cart              ghcr.io/open-telemetry/demo:3.0.0-cart                                          opentelemetry.io/name=cart
+deployment.apps/chatbot           1/1     1            1           6h27m   chatbot           ghcr.io/open-telemetry/demo:3.0.0-chatbot                                       opentelemetry.io/name=chatbot
+deployment.apps/checkout          1/1     1            1           6h27m   checkout          ghcr.io/open-telemetry/demo:3.0.0-checkout                                      opentelemetry.io/name=checkout
+deployment.apps/currency          1/1     1            1           6h27m   currency          ghcr.io/open-telemetry/demo:3.0.0-currency                                      opentelemetry.io/name=currency
+deployment.apps/email             1/1     1            1           6h27m   email             ghcr.io/open-telemetry/demo:3.0.0-email                                         opentelemetry.io/name=email
+deployment.apps/flagd             1/1     1            1           6h27m   flagd,flagd-ui    ghcr.io/open-feature/flagd:v0.16.0,ghcr.io/open-telemetry/demo:3.0.0-flagd-ui   opentelemetry.io/name=flagd
+deployment.apps/fraud-detection   1/1     1            1           6h27m   fraud-detection   ghcr.io/open-telemetry/demo:3.0.0-fraud-detection                               opentelemetry.io/name=fraud-detection
+deployment.apps/frontend          1/1     1            1           6h27m   frontend          ghcr.io/open-telemetry/demo:3.0.0-frontend                                      opentelemetry.io/name=frontend
+deployment.apps/frontend-proxy    1/1     1            1           6h27m   frontend-proxy    ghcr.io/open-telemetry/demo:3.0.0-frontend-proxy                                opentelemetry.io/name=frontend-proxy
+deployment.apps/image-provider    1/1     1            1           6h27m   image-provider    ghcr.io/open-telemetry/demo:3.0.0-image-provider                                opentelemetry.io/name=image-provider
+deployment.apps/kafka             1/1     1            1           6h27m   kafka             ghcr.io/open-telemetry/demo:3.0.0-kafka                                         opentelemetry.io/name=kafka
+deployment.apps/load-generator    1/1     1            1           6h27m   load-generator    ghcr.io/open-telemetry/demo:3.0.0-load-generator                                opentelemetry.io/name=load-generator
+deployment.apps/mcp               1/1     1            1           6h27m   mcp               ghcr.io/open-telemetry/demo:3.0.0-mcp                                           opentelemetry.io/name=mcp
+deployment.apps/opamp-server      1/1     1            1           6h27m   opamp-server      ghcr.io/open-telemetry/demo:3.0.0-opamp-server                                  opentelemetry.io/name=opamp-server
+deployment.apps/payment           1/1     1            1           6h27m   payment           ghcr.io/open-telemetry/demo:3.0.0-payment                                       opentelemetry.io/name=payment
+deployment.apps/product-catalog   1/1     1            1           6h27m   product-catalog   ghcr.io/open-telemetry/demo:3.0.0-product-catalog                               opentelemetry.io/name=product-catalog
+deployment.apps/quote             1/1     1            1           6h27m   quote             ghcr.io/open-telemetry/demo:3.0.0-quote                                         opentelemetry.io/name=quote
+deployment.apps/recommendation    1/1     1            1           6h27m   recommendation    ghcr.io/open-telemetry/demo:3.0.0-recommendation                                opentelemetry.io/name=recommendation
+deployment.apps/shipping          1/1     1            1           6h27m   shipping          ghcr.io/open-telemetry/demo:3.0.0-shipping                                      opentelemetry.io/name=shipping
+deployment.apps/telemetry-docs    1/1     1            1           6h27m   telemetry-docs    ghcr.io/open-telemetry/demo:3.0.0-telemetry-docs                                opentelemetry.io/name=telemetry-docs
+deployment.apps/valkey-cart       1/1     1            1           6h27m   valkey-cart       ghcr.io/valkey-io/valkey:9.0.4-alpine3.23                                       opentelemetry.io/name=valkey-cart
+
+NAME                                   READY   STATUS    RESTARTS       AGE     IP            NODE                             NOMINATED NODE   READINESS GATES
+pod/accounting-797cf57494-q22sj        1/1     Running   1 (145m ago)   6h27m   10.244.0.12   otel-sre-copilot-control-plane   <none>           <none>
+pod/ad-55bfd8bc7f-fj9rg                1/1     Running   1 (145m ago)   6h27m   10.244.0.11   otel-sre-copilot-control-plane   <none>           <none>
+pod/agent-5784fbc7b8-qzs9s             1/1     Running   1 (145m ago)   6h27m   10.244.0.5    otel-sre-copilot-control-plane   <none>           <none>
+pod/astronomy-db-576947b4d5-rs5q7      1/1     Running   1 (145m ago)   6h27m   10.244.0.7    otel-sre-copilot-control-plane   <none>           <none>
+pod/cart-69bd7c567b-5ljxw              1/1     Running   2 (145m ago)   6h27m   10.244.0.18   otel-sre-copilot-control-plane   <none>           <none>
+pod/chatbot-567d4c444c-gn8p7           1/1     Running   1 (145m ago)   6h27m   10.244.0.15   otel-sre-copilot-control-plane   <none>           <none>
+pod/checkout-5df89485f4-572wp          1/1     Running   2 (145m ago)   6h27m   10.244.0.33   otel-sre-copilot-control-plane   <none>           <none>
+pod/currency-85798c49dd-pcfnq          1/1     Running   1 (145m ago)   6h27m   10.244.0.19   otel-sre-copilot-control-plane   <none>           <none>
+pod/email-7699887dd9-9fnzk             1/1     Running   1 (145m ago)   6h27m   10.244.0.22   otel-sre-copilot-control-plane   <none>           <none>
+pod/flagd-6595c6ccd6-s2pzs             2/2     Running   2 (145m ago)   6h27m   10.244.0.30   otel-sre-copilot-control-plane   <none>           <none>
+pod/fraud-detection-745d45499-f8lf8    1/1     Running   1 (145m ago)   6h27m   10.244.0.20   otel-sre-copilot-control-plane   <none>           <none>
+pod/frontend-76cbddfbcc-zm8l8          1/1     Running   1 (145m ago)   5h11m   10.244.0.42   otel-sre-copilot-control-plane   <none>           <none>
+pod/frontend-proxy-6b8556949d-qclxj    1/1     Running   1 (145m ago)   6h27m   10.244.0.2    otel-sre-copilot-control-plane   <none>           <none>
+pod/image-provider-bf8d879bf-9g77s     1/1     Running   1 (145m ago)   6h27m   10.244.0.13   otel-sre-copilot-control-plane   <none>           <none>
+pod/kafka-689cd4c658-zq4qg             1/1     Running   1 (145m ago)   6h27m   10.244.0.8    otel-sre-copilot-control-plane   <none>           <none>
+pod/load-generator-589dd6577f-nflfp    1/1     Running   1 (145m ago)   6h27m   10.244.0.17   otel-sre-copilot-control-plane   <none>           <none>
+pod/mcp-5b48579c57-nb5wn               1/1     Running   1 (145m ago)   6h27m   10.244.0.3    otel-sre-copilot-control-plane   <none>           <none>
+pod/opamp-server-85b94498d6-k9675      1/1     Running   1 (145m ago)   6h27m   10.244.0.16   otel-sre-copilot-control-plane   <none>           <none>
+pod/opensearch-0                       1/1     Running   8              6h27m   10.244.0.10   otel-sre-copilot-control-plane   <none>           <none>
+pod/payment-7878dd75bc-hhccc           1/1     Running   1 (145m ago)   6h27m   10.244.0.31   otel-sre-copilot-control-plane   <none>           <none>
+pod/product-catalog-5bb7676754-krmfz   1/1     Running   2 (127m ago)   6h27m   10.244.0.14   otel-sre-copilot-control-plane   <none>           <none>
+pod/quote-5b8b4784fd-ksqlv             1/1     Running   1 (145m ago)   6h27m   10.244.0.21   otel-sre-copilot-control-plane   <none>           <none>
+pod/recommendation-5cd67d4c87-mwblb    1/1     Running   1 (145m ago)   6h27m   10.244.0.4    otel-sre-copilot-control-plane   <none>           <none>
+pod/shipping-5df7c5d696-2bchz          1/1     Running   1 (145m ago)   6h27m   10.244.0.37   otel-sre-copilot-control-plane   <none>           <none>
+pod/telemetry-docs-7c9448db87-wf4hg    1/1     Running   1 (145m ago)   6h27m   10.244.0.6    otel-sre-copilot-control-plane   <none>           <none>
+pod/valkey-cart-67f9957d4b-pg4st       1/1     Running   1 (145m ago)   6h27m   10.244.0.9    otel-sre-copilot-control-plane   <none>           <none>

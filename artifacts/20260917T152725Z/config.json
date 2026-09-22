@@ -1,0 +1,9 @@
+{
+  "run_id": "20260917T152725Z",
+  "mode": "all",
+  "model": "deepseek-flash",
+  "seed": 42,
+  "agent_version": "0.1.0",
+  "n_scenarios": 7,
+  "ts": "2026-09-17T15:31:03.121138+00:00"
+}

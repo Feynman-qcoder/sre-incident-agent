@@ -1,0 +1,108 @@
+{
+  "incident_id": "watchdog-OtelDemoTelemetryAbsent-3fa4f1b3",
+  "investigation_start_ts": "2026-09-18T13:48:51.059475+00:00",
+  "investigation_end_ts": "2026-09-18T13:49:20.988895+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "pod_crash",
+      "description": "The product-catalog pod served nothing for the entire window: its server-span request rate is flat zero with no request or error logs, and its container CPU sits idle at ~0.001 cores versus ~0.281 for the healthy frontend. No restarts or K8s events were observed, indicating the pod/process was not handling traffic. As the central leaf dependency of frontend, checkout and recommendation, its loss produced the namespace-wide telemetry blackout and multi-second caller timeouts without application errors.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 (mean/p50/p95/p99/max all 0.000) across the full window",
+          "expected_baseline": "steady non-zero server request rate for the leaf dependency of frontend/checkout/recommendation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.001 cores (flat idle)",
+          "expected_baseline": "frontend=0.281 cores mean; a serving product-catalog should exceed ~0.01 cores"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "no errors expected; consistent with a dead/idle pod rather than one aborting requests"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"product-catalog\"}",
+          "observed_value": "[no logs found] — zero request or error log lines in the window",
+          "expected_baseline": "regular request-handling log lines from a live product-catalog pod"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=product-catalog, since_seconds=10800)",
+          "observed_value": "[no K8s events found]",
+          "expected_baseline": "Killing/Stopping or restart events if a pod kill occurred"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=frontend, error_only=True)",
+          "observed_value": "20 traces, 0 with errors, p95_duration=16419ms; top spans user_get_ads 5000ms, user_browse_product 5001ms (trace 798b3b0326bd9dea)",
+          "expected_baseline": "sub-second browse latency and frontend p95 well under 1s"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "dependency_failure",
+      "description": "Alternative framing as a failing downstream dependency: product-catalog is unreachable so upstream callers (frontend, checkout, recommendation) stall on it. Evidence is the same missing product-catalog server spans combined with elevated upstream latency and a complete absence of recorded application errors.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 — the dependency served nothing all window",
+          "expected_baseline": "non-zero request rate for a reachable dependency"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "798b3b0326bd9dea",
+          "observed_value": "user_browse_product span 5001ms, status ok (frontend p95=16419ms)",
+          "expected_baseline": "sub-second product browse latency"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend shows a latency anomaly (5s to 16s spans) that is a downstream symptom of the product-catalog outage rather than an intrinsic fault; its error rate is zero and its CPU is normal.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=frontend, error_only=True)",
+          "observed_value": "20 traces, 0 with errors, p95_duration=16419ms; user_get_ads 5000ms, user_browse_product 5001ms, user_view_cart 1501ms (trace 15d1cee789a98d1b)",
+          "expected_baseline": "frontend p95 latency well under 1s"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "no frontend-origin errors expected"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm product-catalog pod health and history: kubectl get pods -n otel-demo -l app.kubernetes.io/name=product-catalog and kubectl describe pod <product-catalog-pod> to inspect restart count, termination reason and last state.",
+    "Inspect whether the pod was killed (Killing/Stopping container) and whether a chaos/pod-kill fault is injected against product-catalog; stop the fault injection if present.",
+    "Restart/redeploy the product-catalog deployment and verify its server-span request rate returns to a non-zero baseline and container CPU rises off idle.",
+    "After recovery, validate that frontend/checkout/recommendation latency returns to sub-second and that namespace span telemetry resumes."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.7,
+  "latency_s": 29.92942,
+  "cost_usd": 0.0044282,
+  "total_prompt_tokens": 8044,
+  "total_completion_tokens": 1536,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

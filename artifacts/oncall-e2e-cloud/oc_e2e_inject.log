@@ -1,0 +1,12 @@
+2026-09-18 12:57:46 [info     ] injecting_fault                dry_run=False fault_service=checkout fault_type=pod_crash scenario_id=checkout-pod_crash-seed42
+2026-09-18 12:57:46 [info     ] waiting_for_fault_duration     seconds=300
+2026-09-18 13:02:47 [info     ] snapshotting_telemetry         end=2026-09-18T05:03:47.819325+00:00 start=2026-09-18T04:56:46.640654+00:00
+2026-09-18 13:02:48 [info     ] snapshotting_metrics           services=15
+2026-09-18 13:02:48 [info     ] snapshotting_traces            services=15
+2026-09-18 13:02:50 [info     ] fetching_full_traces           count=5
+2026-09-18 13:02:50 [info     ] snapshotting_logs              services=15
+2026-09-18 13:02:50 [info     ] snapshotting_k8s_events        namespace=otel-demo
+2026-09-18 13:02:50 [info     ] snapshot_complete              output_dir=snapshots/checkout-pod_crash-seed42
+2026-09-18 13:02:50 [warning  ] snapshot_validation_FAIL       best={'signal': 'request_rate', 'z': -0.46, 'rank': 4, 'fault_value': 0.0} fault_type=pod_crash hint='faulted service is not a clear outlier — fault may not have fired' service=checkout
+2026-09-18 13:02:50 [info     ] ground_truth_written           path=snapshots/checkout-pod_crash-seed42/ground_truth.json validation_passed=False
+2026-09-18 13:02:50 [info     ] injection_complete             output_dir=snapshots/checkout-pod_crash-seed42 scenario_id=checkout-pod_crash-seed42

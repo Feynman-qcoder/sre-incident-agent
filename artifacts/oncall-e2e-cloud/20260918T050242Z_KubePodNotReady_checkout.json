@@ -1,0 +1,104 @@
+{
+  "incident_id": "watchdog-KubePodNotReady-3d474e83",
+  "investigation_start_ts": "2026-09-18T05:02:14.096609+00:00",
+  "investigation_end_ts": "2026-09-18T05:02:42.202997+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout pod (checkout-5df89485f4-5ptgq) is stuck NotReady because its container repeatedly fails to start: the sandbox image gcr.io/google-containers/pause:latest cannot be pulled (ErrImagePull/ImagePullBackOff), and the checkout container is placed into a restart back-off, so the pod never becomes Ready and serves no traffic.",
+      "confidence": 0.78,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff (count=4)",
+          "observed_value": "ImagePullBackOff count=4 on pod checkout-5df89485f4-5ptgq",
+          "expected_baseline": "0 ImagePullBackOff events; pod Ready shortly after scheduling"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off restarting failed container checkout in pod checkout-5df89485f4-5ptgq_otel-demo(15dda906-0f46-4cc7-b64d-16c1f5d (count=1)",
+          "observed_value": "restart back-off on container 'checkout' (count=1)",
+          "expected_baseline": "no container restart back-off events"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a (count=1)",
+          "observed_value": "rpc DeadlineExceeded pulling gcr.io/google-containers/pause:latest",
+          "expected_baseline": "sandbox image cached; pull succeeds"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000 max=0.000 across window (pod serving no requests)",
+          "expected_baseline": "checkout serves traffic with non-zero request rate when Ready"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.001 p99=0.002 (near zero) across window",
+          "expected_baseline": "steady active CPU while checkout handles orders"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Alternate framing of the same signature: the checkout pod cannot satisfy its sandbox image dependency, so the container cannot start and the pod stays NotReady; this is an image/sandbox dependency unavailability rather than a downstream business-service failure.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a (count=2)",
+          "observed_value": "second DeadlineExceeded pull failure for sandbox image on checkout pod",
+          "expected_baseline": "sandbox image resolvable via registry"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts mean=0.000 max=0.000",
+          "expected_baseline": "no restart increase in steady state"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "product-catalog",
+      "fault_type": "unknown",
+      "description": "product-catalog-5bb7676754-hcfpv was (re)scheduled in the same window; a normal scheduling event with no error/latency/restart anomaly observed, included as a lower-probability co-occurring pod lifecycle change.",
+      "confidence": 0.07,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Scheduled: Successfully assigned otel-demo/product-catalog-5bb7676754-hcfpv to otel-sre-copilot-control-plane (count=None)",
+          "observed_value": "product-catalog pod successfully re-scheduled (no failure)",
+          "expected_baseline": "pod remains scheduled/Ready without re-assignment in steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000 max=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the checkout Deployment (checkout-5df89485f4) to determine why the sandbox image gcr.io/google-containers/pause:latest fails to pull (registry reachability, imagePullSecrets, rate limiting).",
+    "Restore the image pull path or pre-seed/mirror the pause image on otel-sre-copilot-control-plane and update the sandbox image reference if gcr.io is unreachable.",
+    "Delete the stuck pod checkout-5df89485f4-5ptgq so it is recreated once the image is resolvable, and confirm the pod reaches Ready.",
+    "Add/keep an alert on ErrImagePull/ImagePullBackOff and KubePodNotReady for otel-demo pods to catch this class of failure earlier."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.8,
+  "latency_s": 28.106388,
+  "cost_usd": 0.00451395,
+  "total_prompt_tokens": 8016,
+  "total_completion_tokens": 1627,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0",
+  "acknowledged_at": "2026-09-18T05:15:51.844645+00:00",
+  "acknowledged_by": "demo"
+}

@@ -1,0 +1,37 @@
+metadata:
+  scenario_id: payment-network-partition-seed42
+  fault_service: payment
+  fault_type: http_abort
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Batch-1 new scenario 011 (B→A arc, network-partition blind-spot probe): NetworkChaos
+    partition cutting traffic INTO payment. Same victim as 003 (packet loss) but a different
+    mechanism and a different detection thesis: when payment is unreachable, its SERVER
+    spans simply disappear (HighErrorRate stays blind — 003's known blind spot), while the
+    CALLERS' CLIENT spans record real errors. The new OtelDemoHighClientErrorRate rule
+    (batch-1) detects the caller side (e.g. checkout). Arc: run once WITHOUT the client
+    rule (expect zero firing — the blind-spot evidence), then deploy the rule and re-run
+    (expect caller-side firing + investigation; root cause honestly attributed to the
+    caller-side error signal, per our honest-attribution spec).
+    fault_type pinned to http_abort (network failure ≈ request failure family; hint used
+    by watchdog mapping).
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: NetworkChaos
+  metadata:
+    name: payment-partition-seed42
+    namespace: chaos-mesh
+  spec:
+    action: partition
+    mode: all
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: payment
+    direction: to
+    duration: "300s"

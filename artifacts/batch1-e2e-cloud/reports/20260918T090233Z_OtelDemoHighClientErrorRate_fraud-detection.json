@@ -1,0 +1,78 @@
+{
+  "incident_id": "watchdog-OtelDemoHighClientErrorRate-d302b7b6",
+  "investigation_start_ts": "2026-09-18T09:02:05.570097+00:00",
+  "investigation_end_ts": "2026-09-18T09:02:33.373646+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "product-catalog sustained ~2.94-3.17 CPU cores versus less than 0.03 cores on every peer service, indicating severe CPU saturation on product-catalog pods. As the shared leaf dependency of frontend, checkout and recommendation, its resource starvation propagates client-facing errors upward to the frontend edge.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=2.937 cores, p50=2.989, p95=3.167, p99=3.169, max=3.170 cores",
+          "expected_baseline": "peer services checkout=0.028, frontend=0.020, payment=0.010, cart=0.004, shipping=0.001, recommendation=0.012 cores => expected <0.05 cores"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.002, p95=0.012, p99=0.018, max=0.019 errors/sec (only service with non-zero server error rate)",
+          "expected_baseline": "error_rate < 0.01; checkout/cart/payment/shipping/product-catalog all 0.000 in window"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "frontend is the only service exhibiting server-side errors during the watchdog window, consistent with the HighClientErrorRate alert being raised at the frontend edge where calls to upstream dependencies fail.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.002, p95=0.012, p99=0.018, max=0.019 errors/sec",
+          "expected_baseline": "0.000 (checkout, cart, payment, shipping, product-catalog, currency, email, quote all returned 0.000 in the same window)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "The product-catalog CPU saturation would inflate response latency on calls from frontend/checkout/recommendation, driving upstream client timeouts/errors while leaving product-catalog's own server error counters at zero.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=34600448 bytes (~34MB), p99=42166026 bytes, no growth trend",
+          "expected_baseline": "stable ~34MB; rules out memory_stress/OOM as the driver of the CPU anomaly"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "0.000 restarts",
+          "expected_baseline": "0 restarts; rules out pod_crash as the root cause"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog pod resource requests/limits and per-container CPU breakdown to confirm whether the ~3-core saturation is a runaway thread/GC loop or genuine load.",
+    "Raise product-catalog CPU limits or horizontally scale the deployment (HPA) to absorb load and relieve downstream call latency.",
+    "Rolling-restart the product-catalog deployment to clear any stuck CPU-bound process, then re-measure container_cpu_usage_seconds_total.",
+    "Verify frontend/checkout/recommendation client error rates return to 0.000 after product-catalog recovery."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.55,
+  "latency_s": 27.803549,
+  "cost_usd": 0.0041992999999999996,
+  "total_prompt_tokens": 7723,
+  "total_completion_tokens": 1425,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

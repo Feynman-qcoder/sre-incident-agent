@@ -1,0 +1,103 @@
+{
+  "incident_id": "frontend-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-16T10:21:52.942375+00:00",
+  "investigation_end_ts": "2026-09-16T10:22:14.752510+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "pod_crash",
+      "description": "The frontend container was forcibly stopped ('Killing: Stopping container frontend') and a replacement pod (frontend-76cbddfbcc-zm8l8) was scheduled, created and started within the incident window, indicating an abrupt frontend pod/container termination consistent with a pod crash. CPU, memory and error rate on frontend remained at baseline, ruling out resource-driven failure.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Stopping container frontend",
+          "observed_value": "count=1 within 600s window (container termination)",
+          "expected_baseline": "no 'Killing/Stopping container' events for frontend under normal operation"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "SuccessfulCreate: Created pod: frontend-76cbddfbcc-zm8l8",
+          "observed_value": "count=1 (new frontend pod created after termination)",
+          "expected_baseline": "no new frontend pod creation events in steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Started: Container started",
+          "observed_value": "count=1 (replacement frontend container started)",
+          "expected_baseline": "no container start events in steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.006, max=0.019",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.072, max=0.091 (no spike)",
+          "expected_baseline": "cpu_usage ~0.07 (no resource pressure)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"frontend-.*\"})",
+          "observed_value": "memory_usage mean=252939195.7, max=296189952 (no spike)",
+          "expected_baseline": "memory_usage ~250MB (no OOM pressure)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "unknown",
+      "description": "A downstream dependency disruption cannot be fully excluded since frontend depends on checkout, recommendation, product-catalog, cart, shipping, currency and ad, but no error traces or error logs surfaced for frontend and error rates stayed at baseline, making this a weak secondary hypothesis.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=frontend, error_only=True)",
+          "observed_value": "[no traces found]",
+          "expected_baseline": "error traces expected if a dependency failure were propagating"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"frontend\"} |= \"error\"",
+          "observed_value": "[no logs found]",
+          "expected_baseline": "error logs expected for dependency failures"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "unknown",
+      "description": "checkout is a downstream dependency of frontend and an initial error-rate sweep target; its error rate stayed at baseline, ruling it out as a propagating fault source.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.004, max=0.019",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect frontend pod logs and previous-container (--previous) logs for the terminated container 'frontend' to determine the exit code/reason for the kill.",
+    "Check frontend liveness/readiness probe configuration and restart policy; verify whether probes or an external eviction caused the container stop.",
+    "Confirm frontend replica count is >=2 so a single pod crash does not remove all serving capacity.",
+    "Review Kubernetes events and node conditions (kubectl describe pod frontend-76cbddfbcc-zm8l8) to rule out node pressure, OOMKill or eviction as the trigger.",
+    "Add alerting on kube_pod_container_status_restarts_total and 'Killing/Stopping container' events for frontend to catch future abrupt terminations."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.7778,
+  "latency_s": 21.810135,
+  "cost_usd": 0.0030849,
+  "total_prompt_tokens": 4998,
+  "total_completion_tokens": 1272,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

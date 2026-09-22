@@ -1,0 +1,96 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-998068de",
+  "investigation_start_ts": "2026-09-17T14:09:30.537301+00:00",
+  "investigation_end_ts": "2026-09-17T14:09:51.606379+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog, a leaf dependency of frontend and recommendation, shows a severe server-side p99 latency spike (~10s) with no error, CPU, memory, or restart anomalies, indicating an injected latency fault at this service. Its callers inherit matching elevated latency.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=9600.7ms, max=10000.0ms, p50=16.1ms (anomaly detected)",
+          "expected_baseline": "p99 well under ~50ms on a healthy leaf service"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no anomaly)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu=0.010 cores (flat)",
+          "expected_baseline": "no CPU pressure anomaly"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "memory=23755980.8 bytes (stable)",
+          "expected_baseline": "no memory growth"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0",
+          "expected_baseline": "0 restarts"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "429bf59ab532c5a9",
+          "observed_value": "user_browse_product | 5043ms | ok",
+          "expected_baseline": "browse spans should complete in <100ms"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "recommendation",
+      "fault_type": "dependency_failure",
+      "description": "recommendation, which calls product-catalog, shows elevated p99 latency (~4.8s) consistent with slow responses from its downstream dependency rather than an internal fault.",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=4627.4ms, max=4820.0ms (anomaly detected)",
+          "expected_baseline": "p99 in the low tens of ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "frontend p99 latency spike (~10s) mirrors the product-catalog latency, reflecting blocked downstream calls rather than an internal frontend fault.",
+      "confidence": 0.4,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=9559.4ms, max=9956.3ms (anomaly detected)",
+          "expected_baseline": "p99 ~30ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog for an injected latency fault (chaos/latency injection or slow code path) and disable/mitigate it.",
+    "Confirm product-catalog failure is purely latency-based (no errors, CPU, memory, or restart anomalies) to rule out other fault types.",
+    "Roll back or restart product-catalog to a known-good build once the latency injection is removed.",
+    "Monitor frontend and recommendation p99 to confirm latency returns to baseline as product-catalog recovers."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.9,
+  "latency_s": 21.069078,
+  "cost_usd": 0.0035448,
+  "total_prompt_tokens": 5643,
+  "total_completion_tokens": 1495,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

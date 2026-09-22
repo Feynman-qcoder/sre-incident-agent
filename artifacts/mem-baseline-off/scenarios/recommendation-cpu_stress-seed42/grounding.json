@@ -1,0 +1,15 @@
+{
+  "grounding_score": 0.875,
+  "verified": 7,
+  "total": 8,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "recommendation",
+      "signal_type": "k8s_event",
+      "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=recommendation, since_seconds=600)",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": false
+}

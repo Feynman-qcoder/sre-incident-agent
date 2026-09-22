@@ -1,0 +1,79 @@
+{
+  "incident_id": "recommendation-cpu_stress-seed42",
+  "investigation_start_ts": "2026-09-18T05:52:17.652472+00:00",
+  "investigation_end_ts": "2026-09-18T05:52:35.993028+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "cpu_stress",
+      "description": "The recommendation service consumed 2.3-3.6 CPU cores across the incident window, roughly 30-100x the CPU of peer services (frontend 0.070, product-catalog 0.025, checkout 0.003), indicating an injected CPU stress fault. The service shows zero error rate, zero pod restarts, no K8s events, and no error logs/traces, consistent with CPU saturation rather than a crash, latency, or dependency failure.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "mean=2.343 cores, p50=2.910, p95=3.604, max=3.608",
+          "expected_baseline": "~0.003-0.07 cores (peer services: frontend=0.070, product-catalog=0.025, checkout=0.003)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000",
+          "expected_baseline": "0 restarts (no crash loop)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency mean=19.123 ms, max=24.000 ms",
+          "expected_baseline": "p99 in low tens of ms (no latency spike)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "mean=105861666 bytes (~106 MB), max=108965888",
+          "expected_baseline": "stable memory, no OOM growth"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=recommendation, since_seconds=600)",
+          "observed_value": "no K8s events found",
+          "expected_baseline": "no OOMKilled/BackOff events"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=recommendation, error_only=True)",
+          "observed_value": "no traces found (no error traces)",
+          "expected_baseline": "no error traces during normal operation"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"recommendation\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "no error logs during normal operation"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm the CPU stress on recommendation pods via `kubectl top pods -n otel-demo` and inspect container CPU limits/requests.",
+    "Apply or tighten CPU resource limits/requests for the recommendation deployment to cap runaway CPU consumption.",
+    "If a stress-injection process (e.g. stress-ng) is running in the recommendation pods, terminate it and identify how it was injected (Chaos Mesh / litmus fault).",
+    "Consider horizontally scaling recommendation replicas or adding a CPU-based HPA to absorb CPU load spikes.",
+    "Monitor recommendation CPU usage and p99 latency after remediation to confirm the anomaly clears."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.875,
+  "latency_s": 18.340556,
+  "cost_usd": 0.0031052,
+  "total_prompt_tokens": 5017,
+  "total_completion_tokens": 1285,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

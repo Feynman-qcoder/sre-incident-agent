@@ -1,0 +1,31 @@
+metadata:
+  scenario_id: frontend-pod_crash-seed42
+  fault_service: frontend
+  fault_type: pod_crash
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Pod crash on frontend service. Tests agent's ability to identify user-facing
+    crash vs deep microservice failure. Frontend has many dependencies — agent
+    should distinguish it from a downstream dependency failure.
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: PodChaos
+  metadata:
+    name: frontend-pod-crash-seed42
+    namespace: chaos-mesh
+  spec:
+    action: pod-kill
+    mode: one
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: frontend
+    scheduler:
+      cron: "@every 60s"
+    duration: "300s"
+    gracePeriod: 0

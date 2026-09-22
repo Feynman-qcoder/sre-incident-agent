@@ -1,0 +1,85 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-c2dddb31",
+  "investigation_start_ts": "2026-09-17T14:09:09.204441+00:00",
+  "investigation_end_ts": "2026-09-17T14:09:30.476731+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog, a leaf service depended on by frontend/checkout/recommendation, exhibits a severe server-side p99 latency spike (~10s) while its CPU and memory usage remain flat. This injected latency propagates upstream, producing the ~9.5s p99 observed on frontend.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 max=10000.0 ms, p95=8003.5 ms, mean=2010.4 ms (anomaly detected)",
+          "expected_baseline": "p50≈16.1 ms; normal p99 well under 100 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 max=9956.25 ms, p95=7971.95 ms (anomaly detected)",
+          "expected_baseline": "p50≈32.7 ms under normal load"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.010 cores, max=0.011 (no anomaly)",
+          "expected_baseline": "steady ~0.01 cores; no CPU saturation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "memory mean=23,755,980 B, max=24,018,944 B (no anomaly)",
+          "expected_baseline": "~24 MB steady; no memory pressure"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "frontend shows the same magnitude of p99 latency (~9.5s) because it synchronously calls product-catalog (plus recommendation → product-catalog) on the request path; its latency is inherited downstream, not intrinsic.",
+      "confidence": 0.4,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 max=9956.25 ms, mean=2014.6 ms (anomaly detected)",
+          "expected_baseline": "p50≈32.7 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "checkout is a downstream consumer of product-catalog but its server p99 remained normal (~24.8 ms), indicating the fault did not manifest through the checkout path during this window; low-confidence alternate.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=24.85 ms flat (no anomaly)",
+          "expected_baseline": "~24.85 ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog for injected latency (chaos/flagd latency fault) and confirm whether a fixed artificial delay was introduced on its server handler or outbound calls.",
+    "Disable/revert the latency injection on product-catalog (e.g., flagd flag or chaos experiment) and re-measure p99.",
+    "Add/verify timeouts and retries between frontend→product-catalog and recommendation→product-catalog so a slow leaf cannot cascade a ~10s p99 into frontend.",
+    "Monitor product-catalog p99 (duration_milliseconds_bucket) for recovery; validate frontend p99 returns to <100 ms baseline.",
+    "Since CPU/memory are flat, avoid scaling actions — this is latency, not resource exhaustion."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.85,
+  "latency_s": 21.27229,
+  "cost_usd": 0.00292845,
+  "total_prompt_tokens": 4629,
+  "total_completion_tokens": 1246,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

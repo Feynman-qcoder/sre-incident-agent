@@ -1,0 +1,89 @@
+{
+  "incident_id": "payment-http_abort-seed42",
+  "investigation_start_ts": "2026-09-18T06:00:13.676514+00:00",
+  "investigation_end_ts": "2026-09-18T06:00:36.115898+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "http_abort",
+      "description": "An http_abort fault on the payment service (a leaf dependency of checkout) causes checkout's outbound HTTP calls to payment to never complete normally, so checkout blocks until its 10s deadline. The abort occurs at the HTTP boundary, so payment emits no completed/errored server span and its own server-side latency and error metrics remain normal.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0ms (p50=10000.0ms, p95=10000.0ms, max=10000.0ms, mean=9161.7ms)",
+          "expected_baseline": "checkout server p99 < 100ms under normal operation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0ms with p50=46.2ms and p95=10000.0ms (bimodal: median fast, subset pinned at 10s)",
+          "expected_baseline": "frontend server p99 < 500ms with p50≈p95"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99≈4.94ms (p50=4.88ms, p95=4.93ms, max=4.94ms, mean=3.93ms) — normal",
+          "expected_baseline": "payment server p99 ~5ms; supports abort-at-boundary rather than slow execution"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 (no server-side error spans on payment)",
+          "expected_baseline": "error_rate ≈ 0; confirms failure is not surfaced inside payment server spans"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout exhibits a 10s latency spike, but this is a propagated symptom of the payment HTTP abort rather than the origin: checkout's handler blocks on the aborted payment call until its 10s deadline.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0ms (p50=10000.0ms, max=10000.0ms)",
+          "expected_baseline": "checkout server p99 < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 (no checkout error spike; latency-only symptom)",
+          "expected_baseline": "error_rate ≈ 0"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend shows the furthest-upstream manifestation of the propagation: a subset of user requests hang for the full 10s deadline while the median request stays fast (~46ms). This is a propagated symptom, not a root cause.",
+      "confidence": 0.08,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0ms with p50=46.2ms",
+          "expected_baseline": "frontend server p99 < 500ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable/roll back the http_abort fault injection on the payment service (the flagd flag controlling the payment HTTP abort) to restore normal responses.",
+    "Restart the payment deployment pods to clear any stuck/aborted connection state and confirm checkout p99 latency returns below 100ms.",
+    "Monitor checkout and frontend p99 latency for recovery to baseline (<100ms and <500ms respectively); add a per-dependency timeout/circuit-breaker on checkout→payment so a hung dependency fails fast instead of blocking to the 10s deadline."
+  ],
+  "fault_type_classification": "http_abort",
+  "grounding_score": 1.0,
+  "latency_s": 22.439384,
+  "cost_usd": 0.003444,
+  "total_prompt_tokens": 5433,
+  "total_completion_tokens": 1469,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

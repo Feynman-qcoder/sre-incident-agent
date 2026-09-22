@@ -1,0 +1,7 @@
+02:27:59 load=[31.18 30.65 28.53] frontend=0.92 nonzero_svcs=8 lg=[]
+02:33:09 load=[32.76 30.81 29.09] frontend=0.84 nonzero_svcs=8 lg=[load-generator-589dd6577f-w5srw Running]
+02:38:23 load=[30.97 30.82 29.56] frontend=0.89 nonzero_svcs=7 lg=[load-generator-589dd6577f-w5srw Running]
+02:43:33 load=[23.30 26.00 27.92] frontend=0.0 nonzero_svcs=2 lg=[load-generator-589dd6577f-gfmdw Pending]
+02:48:37 load=[23.78 24.52 26.69] frontend=0.02 nonzero_svcs=3 lg=[]
+02:53:47 load=[33.57 27.58 27.12] frontend=1.95 nonzero_svcs=8 lg=[load-generator-589dd6577f-gfmdw Running]
+02:58:57 load=[40.47 35.02 30.41] frontend=1.31 nonzero_svcs=8 lg=[load-generator-589dd6577f-gfmdw Running]

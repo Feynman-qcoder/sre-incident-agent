@@ -1,0 +1,116 @@
+{
+  "incident_id": "watchdog-KubePodCrashLooping-316567f7",
+  "investigation_start_ts": "2026-09-16T13:48:48.820884+00:00",
+  "investigation_end_ts": "2026-09-16T13:50:16.888804+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was repeatedly killed and restarted during the incident window (Killing/Started/Created events with counts 2-3), matching the KubePodCrashLooping alert. CPU (~0.001 cores) and memory (~34MB) stayed normal, ruling out resource exhaustion; the 'definition changed, will be restarted' event indicates a container spec change/rollout triggered the crash loop, compounded by ImagePullBackOff on the pause image blocking sandbox creation.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=2)",
+          "observed_value": "checkout container killed and restarted; Created (count=3), Started (count=3), Pulled ghcr.io/open-telemetry/demo:3.0.0-checkout (count=3) during window",
+          "expected_baseline": "no Killing/BackOff restart events for checkout pods"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff (count=3)",
+          "observed_value": "BackOff pulling image gcr.io/google-containers/pause:latest (count=3); Failed to pull: rpc error DeadlineExceeded (count=3)",
+          "expected_baseline": "no image pull failures for pod sandbox images"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts max=1.111, p95=1.111, mean=0.185 (anomaly flagged at 13:48:04-13:48:34)",
+          "expected_baseline": "pod_restarts = 0; payment and frontend pods showed 0.000 across the same window"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage max=0.001 cores (near zero, pod down/restarting)",
+          "expected_baseline": "normal checkout CPU baseline; rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "memory max=34689024 bytes (~34MB), mean=14861994.667",
+          "expected_baseline": "normal working set, no OOM-level pressure; rules out memory_stress"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "While the checkout pod was crash-looping, requests routed to it hung rather than failing fast: traces through checkout show p95 duration of ~54s (top traces at 15001-15002ms) with zero span errors, and checkout server error_rate stayed low (max 0.048). This is a secondary effect of the pod restarts, not an independent fault.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "2fdd4b697d99ebe6",
+          "observed_value": "user_get_recommendations trace, 15001ms, status ok; search_traces on checkout returned 20 traces, 0 errors, p95_duration=54483ms (also 2ef3350823423b78 and bd4dc69e977eba04 at 15002ms)",
+          "expected_baseline": "p95 trace duration well under 1s for checkout-involved user journeys"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate max=0.048, mean=0.008, p50=0.000",
+          "expected_baseline": "error_rate < 0.01; errors stayed low because requests hung instead of aborting"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=4.850, max=4.850 (server-side spans fast; hang occurs upstream waiting on unavailable checkout)",
+          "expected_baseline": "checkout p99 latency in single-digit ms is normal for served spans"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "The frontend, which depends on checkout for order placement, showed an elevated server error rate (up to 0.105) during the window — upstream propagation of checkout unavailability, not an independent frontend fault (frontend pods had zero restarts).",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "frontend error_rate mean=0.058, p95=0.100, max=0.105 during window",
+          "expected_baseline": "frontend error_rate < 0.01 under normal operation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "frontend pod_restarts = 0.000 (frontend itself healthy)",
+          "expected_baseline": "0 restarts — confirms errors originate from the checkout dependency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+          "observed_value": "payment pod_restarts = 0.000 (other checkout dependencies healthy)",
+          "expected_baseline": "0 restarts — isolates the fault to checkout, not its downstream dependencies"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the checkout pod with kubectl describe pod -n otel-demo <checkout-pod> and kubectl logs --previous to capture the crash reason; the 'definition changed, will be restarted' event points to a spec/rollout change as the trigger.",
+    "If a recent deployment changed the checkout container spec, roll it back with kubectl rollout undo deployment/checkout -n otel-demo and verify the pod reaches Ready.",
+    "Resolve the ImagePullBackOff on gcr.io/google-containers/pause:latest (pre-pull the image, fix registry access/timeout, or use a locally available pause image) so pod sandbox creation is not blocked during restarts.",
+    "Add readiness and startup probes on checkout so it is removed from endpoints while crash-looping, producing fast failures instead of 15-54s hung requests.",
+    "Add timeouts, retries with backoff, and a circuit breaker in frontend (and accounting/fraud-detection) calls to checkout to prevent cascading errors during checkout outages.",
+    "Alert on increases in kube_pod_container_status_restarts_total for checkout with a tighter threshold so crash loops are caught before user-facing impact."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 88.06792,
+  "cost_usd": 0.005555200000000001,
+  "total_prompt_tokens": 5075,
+  "total_completion_tokens": 3599,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

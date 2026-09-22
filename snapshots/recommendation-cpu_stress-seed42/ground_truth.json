@@ -1,0 +1,13 @@
+{
+  "scenario_id": "recommendation-cpu_stress-seed42",
+  "fault_service": "recommendation",
+  "fault_type": "cpu_stress",
+  "chaos_kind": "StressChaos",
+  "injection_ts": "2026-09-16T07:57:38.043393+00:00",
+  "recovery_ts": "2026-09-16T08:02:38.269881+00:00",
+  "seed": 42,
+  "chaos_manifest_hash": "b8f3b45cd11bad4d",
+  "window_start": "2026-09-16T07:56:38.043393+00:00",
+  "window_end": "2026-09-16T08:03:38.269881+00:00",
+  "validation_passed": true
+}

@@ -1,0 +1,114 @@
+{
+  "incident_id": "payment-network-partition-seed42",
+  "investigation_start_ts": "2026-09-18T09:21:51.941759+00:00",
+  "investigation_end_ts": "2026-09-18T09:22:27.509654+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "dependency_failure",
+      "description": "A network partition isolating the payment service prevents checkout's outbound call to payment from ever completing, so checkout blocks until its 10s deadline. Because the fault is at the network boundary, payment never emits completed/errored server spans, leaving its own server-side error_rate and resource metrics normal.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0 ms pinned constant across the window (mean=10000.000 p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000)",
+          "expected_baseline": "p99 < 200 ms for frontend server latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (flat) throughout 07:55:42–08:02:43",
+          "expected_baseline": "error_rate < 0.01; a serving-side fault would raise this above 0"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (flat) throughout the window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu≈0.010 cores (mean=0.010, max=0.017) — normal",
+          "expected_baseline": "cpu < 0.05 cores"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"payment-.*\"})",
+          "observed_value": "memory≈264.5 MB (mean=264528418 bytes) — normal, no OOM pressure",
+          "expected_baseline": "stable working set, no growth toward limit"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000 — payment pod not crashing",
+          "expected_baseline": "0 restarts"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout is the caller blocked on the unreachable payment dependency; its request path stalls until the 10s deadline, propagating constant 10s latency downstream to frontend. Checkout shows no server-side error_rate, consistent with a hang (timeout) rather than a returned failure.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (flat) throughout the window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0 ms — customer-facing path through checkout pinned at the 10s deadline",
+          "expected_baseline": "p99 < 200 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend is the top-level entry point whose server-side p99 is pinned at exactly 10000ms; this is a downstream symptom of the checkout→payment hang, not a first-cause fault (its own error_rate is 0 and it continues serving requests).",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0 ms pinned constant over the window",
+          "expected_baseline": "p99 < 200 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (flat)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate≈0.444/s (mean=0.444, max=0.676) — requests still being served",
+          "expected_baseline": "steady request throughput, not zero"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect and remove/roll back the NetworkPolicy or partition injection isolating the payment pods in namespace otel-demo to restore network connectivity between checkout and payment.",
+    "Verify connectivity with a probe from checkout to payment (confirm gRPC calls complete well under the 10s deadline) and re-check frontend p99 latency returns below baseline (<200ms).",
+    "Recycle the checkout and payment deployments to clear any half-open/hung TCP connections established during the partition.",
+    "Confirm payment server spans resume completing normally (error_rate and p99 at payment back at baseline) and that no error_rate spike appears at checkout/frontend after recovery."
+  ],
+  "fault_type_classification": "dependency_failure",
+  "grounding_score": 1.0,
+  "latency_s": 35.567895,
+  "cost_usd": 0.0023146499999999997,
+  "total_prompt_tokens": 6983,
+  "total_completion_tokens": 2112,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

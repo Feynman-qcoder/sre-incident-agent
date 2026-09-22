@@ -1,0 +1,96 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T11:56:21.717813+00:00",
+  "investigation_end_ts": "2026-09-18T11:56:39.628380+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout pod is crash-looping and serves no traffic: its container definition was changed ('Container checkout definition changed, will be restarted') and the replacement cannot start because the sandbox image gcr.io/google-containers/pause:latest fails to pull (ErrImagePull/ImagePullBackOff), so the pod never becomes Ready and checkout request rate collapses.",
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=1)",
+          "observed_value": "count=1 kill event on checkout pod during incident window",
+          "expected_baseline": "no container definition change / kill events for checkout"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff (count=4)",
+          "observed_value": "ErrImagePull/ImagePullBackOff for gcr.io/google-containers/pause:latest, BackOff count=4",
+          "expected_baseline": "0 image pull failures; sandbox image resolves and pulls"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.018, max=0.057 req/s at 07:34-07:41",
+          "expected_baseline": "frontend ~7.6 req/s; checkout should be same order as upstream traffic"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=checkout, error_only=True)",
+          "observed_value": "no traces found (checkout not serving requests)",
+          "expected_baseline": "checkout server spans present for checkout calls"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"error\"",
+          "observed_value": "no logs found (container producing no logs)",
+          "expected_baseline": "checkout emits request/error logs during normal operation"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Frontend shows a modest elevated error rate consistent with its downstream checkout dependency being unavailable; this is propagation, not the origin.",
+      "confidence": 0.35,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.063, max=0.171 error/s during window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=7.594 req/s (frontend still handling traffic)",
+          "expected_baseline": "frontend healthy request rate ~7-9 req/s"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "cart",
+      "fault_type": "unknown",
+      "description": "No anomalous error signal was observed on cart; it was checked but ruled out as the origin of the incident.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000, max=0.000 error/s",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Roll back the checkout Deployment to the previous working container definition — the 'Container checkout definition changed, will be restarted' kill event indicates a recent spec change triggered the outage.",
+    "Fix the sandbox image pull failure: the pull of gcr.io/google-containers/pause:latest fails with DeadlineExceeded/ErrImagePull. Verify registry connectivity/DNS, use an accessible mirror or pre-pulled image, or set imagePullPolicy: IfNotPresent.",
+    "Delete/restart the stuck checkout pod once the image pull path is restored so a Ready replica is scheduled and checkout traffic recovers.",
+    "Add a KubePodNotReady/ImagePullBackOff alert on the checkout Deployment and confirm replicas return to desired count to avoid recurrence."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.75,
+  "latency_s": 17.910567,
+  "cost_usd": 0.0017229,
+  "total_prompt_tokens": 6210,
+  "total_completion_tokens": 1319,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

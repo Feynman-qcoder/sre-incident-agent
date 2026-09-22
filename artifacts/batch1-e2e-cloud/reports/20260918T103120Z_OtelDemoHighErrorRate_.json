@@ -1,0 +1,97 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-3a0d3ec3",
+  "investigation_start_ts": "2026-09-18T10:30:05.654161+00:00",
+  "investigation_end_ts": "2026-09-18T10:31:20.523090+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "The recommendation service's server-side latency is pinned at the histogram ceiling (p50=p95=p99=max=10000 ms, mean 9958 ms) while emitting no error responses, indicating an injected fixed-latency fault. recommendation is a direct dependency of frontend (recommendation → product-catalog), so its slowdown propagates upstream and drives the frontend request timeouts and error spike.",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=9958.0 ms, p50=10000 ms, p95=10000 ms, p99=10000 ms, max=10000 ms",
+          "expected_baseline": "recommendation p99 < 100 ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "306997b7c8789890",
+          "observed_value": "user_get_recommendations span duration 15001 ms (ok)",
+          "expected_baseline": "frontend request < 500 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 errors/s, no anomaly detected",
+          "expected_baseline": "~0 (confirms latency fault, not hard failure)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "frontend is the entry point (invoked by load-generator) and absorbed the propagated failure: its server error rate spiked (max 5.33 err/s) and its p99 latency rose to the 10000 ms histogram ceiling, consistent with timeouts on downstream recommendation calls rather than an internal fault (CPU normal, memory normal, 0 restarts).",
+      "confidence": 0.33,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.076, p95=0.152, p99=1.086, max=5.333 err/s; anomaly window 1789709335→1789720345",
+          "expected_baseline": "frontend error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=9985.8 ms, p50=p95=p99=max=10000 ms",
+          "expected_baseline": "frontend p99 < 500 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "0 restarts; cpu mean=0.021 (max 0.149); memory ~510 MB stable",
+          "expected_baseline": "0 restarts; no resource saturation -> rules out pod_crash/cpu_stress/memory_stress on frontend"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog is the shared transitive dependency (recommendation → product-catalog and frontend → product-catalog) and therefore an alternative origin for the ≥10 s latency observed at both recommendation and frontend; it could not be excluded because its own server latency was not captured before the tool budget was exhausted, though it showed zero server errors.",
+      "confidence": 0.17,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 errors/s, no anomaly detected",
+          "expected_baseline": "~0 (no hard failures; error metric cannot confirm or exclude a latency fault)"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "get_service_topology otel-demo",
+          "observed_value": "recommendation → product-catalog; frontend → product-catalog",
+          "expected_baseline": "n/a"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm the origin of the ~10 s latency by querying product-catalog server p99: histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le)) and inspecting its span duration inside the slowest traces.",
+    "Inspect slow trace 306997b7c8789890 (and other frontend traces >10 s) to identify which child span (recommendation vs product-catalog) holds the delay, pinning down the injected service.",
+    "If recommendation is confirmed: check for an active flagd feature flag (e.g. recommendation latency/cache fault), disable it, then roll/restart the recommendation deployment and verify p99 returns to <100 ms.",
+    "Add or tighten client timeouts and circuit breakers on frontend→recommendation and recommendation→product-catalog so a single slow dependency cannot drive frontend error rates.",
+    "Monitor frontend error_rate and recommendation p99 for 30 minutes after mitigation to confirm recovery."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.55,
+  "latency_s": 74.868929,
+  "cost_usd": 0.0043652,
+  "total_prompt_tokens": 7495,
+  "total_completion_tokens": 1659,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,103 @@
+{
+  "incident_id": "cart-memory_stress-seed42",
+  "investigation_start_ts": "2026-09-16T10:20:55.302038+00:00",
+  "investigation_end_ts": "2026-09-16T10:21:34.559759+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "The cart service shows a sustained, elevated container memory working set (~93MB mean, ~108MB max across the window) relative to comparable Go-based services (shipping ~12.5MB, checkout ~24.7MB), with normal CPU and zero error rate. The memory pressure coincides with a container recreation, consistent with an injected memory-stress fault on the cart pods.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "mean=93337463 B (~93MB), p50=90976256, max=108339200 (~108MB)",
+          "expected_baseline": "~12-25MB for comparable Go services (shipping mean=12480512, checkout mean=24669661)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"shipping-.*\"})",
+          "observed_value": "mean=12480512 B (~12.5MB), max=12554240",
+          "expected_baseline": "cart mean=93337463 B, i.e. ~7x elevation versus shipping"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "max=1.031 restarts over 5m",
+          "expected_baseline": "0 restarts (stable pods)"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Created: Container created (count=2)",
+          "observed_value": "cart container created twice within the window, indicating a pod restart",
+          "expected_baseline": "count=1 for a stable, non-restarted pod"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 max=78.573 ms (p50=4.262 ms, mean=12.136 ms), anomaly flagged [1789545942.954→1789545972.954]",
+          "expected_baseline": "p99 ~4-12ms for cart at steady state"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "cart",
+      "fault_type": "pod_crash",
+      "description": "A cart pod container was recreated (restart count increased ~1 over the window; container Created/Started events observed twice). This is consistent with memory-pressure-induced restart, though no explicit OOMKilled event was captured in the lookback.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "max=1.031 restarts over 5m",
+          "expected_baseline": "0 restarts"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Started: Container started (count=2)",
+          "observed_value": "cart container started twice within the window",
+          "expected_baseline": "count=1"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "cart",
+      "fault_type": "high_latency",
+      "description": "cart server-side p99 latency shows a transient spike (up to ~78ms vs ~4ms median) early in the window. This is likely a secondary symptom of memory pressure rather than the primary fault, as error rate and CPU remained normal.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 max=78.573 ms, mean=12.136 ms, p50=4.262 ms; anomaly window [1789545942.954→1789545972.954]",
+          "expected_baseline": "p99 <~15ms for cart"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=1.116 req/s, max=1.267 req/s (stable throughput, no saturation)",
+          "expected_baseline": "~1.1 req/s steady state"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Increase the memory limit/request for the cart deployment to relieve memory pressure and prevent OOM-induced restarts.",
+    "Roll/restart the cart pods to clear the memory-stressed container and restore a clean working set.",
+    "Inspect cart pods for an injected memory stressor (e.g., stress-ng sidecar/ephemeral container) and remove it.",
+    "Add/alert on container_memory_working_set_bytes and OOMKilled events for cart to detect memory_stress faults early.",
+    "Verify cart p99 latency and restart counts return to baseline (~<15ms, 0 restarts) after remediation."
+  ],
+  "fault_type_classification": "memory_stress",
+  "grounding_score": 0.8889,
+  "latency_s": 39.257721,
+  "cost_usd": 0.004293450000000001,
+  "total_prompt_tokens": 6267,
+  "total_completion_tokens": 2000,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,163 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-998068de",
+  "investigation_start_ts": "2026-09-17T11:00:27.828704+00:00",
+  "investigation_end_ts": "2026-09-17T11:03:58.443378+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend service exhibits a severe p99 latency spike (~10,000ms) that is intrinsic to the frontend itself. All eight downstream dependencies (checkout, payment, product-catalog, recommendation, cart, shipping, currency, ad) show normal p99 latency (<25ms), frontend CPU (0.02 cores), memory (~214MB), and pod restarts (0) are normal, error rate is 0, and slow traces (user_checkout_multi ~15s) complete with 'ok' status. This indicates an application-level latency fault in the frontend request path rather than downstream propagation or resource exhaustion.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=10000.000 (mean=7783.137, p50=10000.000, p95=10000.000, max=10000.000) across incident window",
+          "expected_baseline": "p99_latency_ms < 100ms (all sibling services measured 1.98-24.85ms in same window)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=24.850 (mean=24.850, max=24.850) — downstream checkout normal",
+          "expected_baseline": "p99_latency_ms < 100ms — rules out checkout as latency source"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=4.970 (mean=4.970, max=4.970) — recommendation normal",
+          "expected_baseline": "p99_latency_ms < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=1.980 (mean=1.980, max=1.980) — cart normal",
+          "expected_baseline": "p99_latency_ms < 100ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "b930bbaba58be41d",
+          "observed_value": "user_checkout_multi trace duration=15021ms, status=ok; search_traces found 15 traces >5000ms, 0 with errors, p95_duration=190527ms",
+          "expected_baseline": "user_checkout_multi traces typically complete in <1s with ok status"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (mean/p50/p95/p99/max all 0.000) across window",
+          "expected_baseline": "error_rate=0 — rules out http_abort; pure latency fault"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.020 cores (mean=0.019, p50=0.020, max=0.020), flat with no spike",
+          "expected_baseline": "cpu_usage < 0.5 cores — rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"frontend-.*\"})",
+          "observed_value": "memory_usage max=214446080 bytes (~214MB, stable; mean=214152533.333)",
+          "expected_baseline": "memory_usage well below frontend limits — rules out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0.000 (mean/p50/p95/p99/max all 0.000) across window",
+          "expected_baseline": "pod_restarts=0 — rules out pod_crash/OOMKill"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"frontend\"} |= \"error\"",
+          "observed_value": "no logs found — no error logs from frontend during incident window",
+          "expected_baseline": "no error logs expected; consistent with error-free slow responses"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Downstream dependency failure was considered but ruled out: every service the frontend calls (checkout, recommendation, product-catalog, cart, shipping, currency, ad) and their transitive dependencies (payment, email, quote) show normal p99 latency, and the slow frontend traces contain zero errors, so the 10s delay cannot be attributed to a failing or slow dependency.",
+      "confidence": 0.08,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=4.970 (mean=4.207, max=4.970) — payment normal",
+          "expected_baseline": "p99_latency_ms < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=16.663 (mean=12.292, max=16.675) — product-catalog normal",
+          "expected_baseline": "p99_latency_ms < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=4.790 (mean=2.910, max=4.790) — shipping normal",
+          "expected_baseline": "p99_latency_ms < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"currency\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=1.980 (mean=1.980, max=1.980) — currency normal",
+          "expected_baseline": "p99_latency_ms < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"ad\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=4.593 (mean=2.296, max=4.820) — ad normal",
+          "expected_baseline": "p99_latency_ms < 100ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "917aec0de25150ab",
+          "observed_value": "user_checkout_multi trace duration=15027ms, status=ok — slow but error-free",
+          "expected_baseline": "traces complete <1s; dependency failures would surface as errors/timeouts"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "cpu_stress",
+      "description": "Resource exhaustion (CPU or memory stress) on the frontend pod was considered but ruled out: frontend CPU usage is flat at 0.02 cores, memory working set is stable at ~214MB, pod restarts are 0, and no Kubernetes events (OOMKilled, BackOff) were found for the frontend pods during the window.",
+      "confidence": 0.02,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.020 cores flat (mean=0.019, max=0.020), no spike",
+          "expected_baseline": "cpu_stress would show sustained usage near/exceeding CPU limits"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"frontend-.*\"})",
+          "observed_value": "memory_usage stable at ~214MB (max=214446080 bytes), no growth trend",
+          "expected_baseline": "memory_stress would show monotonic growth toward the container limit"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=\"otel-demo\", pod_name_prefix=\"frontend\", since_seconds=600)",
+          "observed_value": "no K8s events found (no OOMKilled, BackOff, or FailedScheduling events)",
+          "expected_baseline": "resource stress or crash loops would produce OOMKilled/BackOff events"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Check for active chaos/fault-injection experiments targeting the frontend pod (e.g., network delay or app-level latency injection) and terminate them if found.",
+    "Inspect the frontend deployment config and recent changes for artificial delays, blocking calls, or misconfigured timeouts in the request handler path.",
+    "Restart the frontend deployment (kubectl -n otel-demo rollout restart deployment/frontend) to clear any transient in-process latency fault.",
+    "Verify frontend outbound connection pool, thread pool, and lock contention settings that could cause request queuing.",
+    "Add a p99 latency SLO alert on the frontend service (threshold ~500ms) for faster detection of recurrence, and confirm recovery by re-querying frontend p99 after remediation."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 210.614674,
+  "cost_usd": 0.006800499999999999,
+  "total_prompt_tokens": 6215,
+  "total_completion_tokens": 4405,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

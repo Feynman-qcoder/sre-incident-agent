@@ -1,0 +1,102 @@
+# OTel Demo 黄金指标告警规则（P1 add-golden-signal-alerts）
+# 阈值来源：新环境实测校准（2026-09-17；30 分钟健康观察零误报 + 分位回测定 R=4.5）
+#   - R = 4.5：健康期观测——3 轮采样最大 1.80（email bucket 跳变）+ 门 C 30 分钟观察
+#     捕获 shipping 瞬时 4.0（bucket 离散跳变，<2min 回落）→ 取 4.0×1.125；注入信号
+#     482–1937x，灵敏度不受影响
+#   - 错误率 10%：SLO 语义绝对阈值（新环境 frontend 健康基线 = 0%）
+#   - 保护条款 p99_ref > 1ms：防除零/近零基线放大（spec 原文 100ms 系旧机多秒基线
+#     产物，新环境基线毫秒级，按校准调整为 1ms——见校准记录 §六，待 spec 同步修订）
+# 部署：kubectl apply -f infra/prometheus-rules/golden-signals.yaml
+# 撤销：kubectl delete -f infra/prometheus-rules/golden-signals.yaml
+# 注意：labels.release 必须匹配 Prometheus ruleSelector（实测 matchLabels: release: prometheus）
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: otel-demo-golden-signals
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: otel-demo.golden-signals
+      rules:
+        - alert: OtelDemoHighLatencyP99
+          # p99 相对跳变：当前 5m 窗口 p99 ÷ 30 分钟前的 5m 窗口 p99 > 4.5
+          # （spanmetrics 与 src/telemetry_queries.py 同源；by(service_name) 一次覆盖全部服务）
+          # and 保护子句：参考窗口 p99 > 1ms 的服务才参与比值（排除无流量/近零 series）
+          expr: |
+            (
+              histogram_quantile(0.99, sum by (service_name, le) (rate(duration_milliseconds_bucket{span_kind="SPAN_KIND_SERVER"}[5m])))
+              /
+              histogram_quantile(0.99, sum by (service_name, le) (rate(duration_milliseconds_bucket{span_kind="SPAN_KIND_SERVER"}[5m] offset 30m)))
+              > 4.5
+            )
+            and on (service_name)
+            (
+              histogram_quantile(0.99, sum by (service_name, le) (rate(duration_milliseconds_bucket{span_kind="SPAN_KIND_SERVER"}[5m] offset 30m))) > 1
+            )
+          for: 2m
+          labels:
+            namespace: otel-demo
+          annotations:
+            summary: "p99 latency jumped {{ $value }}x vs 30m ago for {{ $labels.service_name }}"
+            description: "Current 5m p99 is >4.5x the 30-minutes-ago 5m p99 (baseline-gated: ref p99 >1ms)."
+        - alert: OtelDemoHighErrorRate
+          # SERVER span 错误占比（5m 窗口）> 10%（SLO 语义绝对阈值）
+          expr: |
+            sum by (service_name) (rate(calls_total{span_kind="SPAN_KIND_SERVER",status_code="STATUS_CODE_ERROR"}[5m]))
+            /
+            sum by (service_name) (rate(calls_total{span_kind="SPAN_KIND_SERVER"}[5m]))
+            > 0.10
+          for: 1m
+          labels:
+            namespace: otel-demo
+          annotations:
+            summary: "error ratio {{ $value | humanizePercentage }} for {{ $labels.service_name }}"
+            description: "SERVER-span error ratio exceeded 10% over the last 5 minutes."
+        - alert: OtelDemoHighClientErrorRate
+          # 批次1：CLIENT span 错误占比（5m）> 10%——网络分区盲区补盲（011 B→A 弧线）。
+          # 依据：003 实证 SERVER span 对"请求根本到不了"失明（span 不产生）；
+          # 调用方（B 端）的 CLIENT span 记录真实失败。阈值对齐 SERVER 版 10%（SLO 语义），
+          # 基线观察（apply 后 30 分钟）确认 k6 正常失败不误报后方可投用。
+          expr: |
+            sum by (service_name) (rate(calls_total{span_kind="SPAN_KIND_CLIENT",status_code="STATUS_CODE_ERROR"}[5m]))
+            /
+            sum by (service_name) (rate(calls_total{span_kind="SPAN_KIND_CLIENT"}[5m]))
+            > 0.10
+          for: 1m
+          labels:
+            namespace: otel-demo
+          annotations:
+            summary: "CLIENT-span error ratio {{ $value | humanizePercentage }} for {{ $labels.service_name }}"
+            description: "Caller-side (CLIENT span) error ratio exceeded 10% over the last 5 minutes — downstream may be unreachable."
+        - alert: OtelDemoTelemetryAbsent
+          # 批次1 补盲（010 边界）：SERVER span 指标流缺席告警——Pyrra SLOMetricAbsent 同思想
+          # （SLO 的前提是指标在场；指标消失本身就是事故信号）。
+          # 设计依据（三条取舍）：
+          #   1. 窗口 10m：Prometheus series staleness 标记为 5m 无样本——窗口须 >5m 跨过
+          #      stale 标记；10m 对最低流量服务（quote ~0.004 req/s ≈ 每 10 分钟 2.4 个请求，
+          #      每请求产生 span 样本）留有余量但不至于过钝。若健康观察发现低流量服务误报，
+          #      放宽至 15m（本文件注释与台账同步记录调整）。
+          #   2. per-service 形态（子查询 by service_name）而非全局 absent：010 的目标是
+          #      单服务断流（quote NaN 失明）——全局版只在整条指标管道中断时触发，对单服务
+          #      失明无效。子查询使 absent 输出携带 service_name 标签 → watchdog 照常走
+          #      service_hint 路径（无特例逻辑）。
+          #   3. 监测对象选 SERVER 桶（duration_milliseconds_bucket）而非 calls_total：
+          #      二者同源同生灭，桶序列最稳定且不枚举服务名单（by 分组天然覆盖 13 服务）。
+          # 语义：服务 SERVER span 指标流消失 ≥10 分钟——低流量假象或进程消失（010 边界补盲）。
+          # ⚠️ 实测校准（2026-09-18 云端验证）：真实触发时延 = 断流时长 ≥ staleness(5m) +
+          #    absent 窗口(10m) = **约 15 分钟**（subquery 内的 instant selector 先经历 5m
+          #    stale 标记，absent_over_time 再回看 10m）——800s(13.3m) 的 quote pod-failure
+          #    断流实测未触发（差 ~2 分钟），验证改走 --alerts-file 路径证明 watchdog 接入。
+          #    若需更快的缺席检测，缩窗至 5m（触发 ≈10m 断流）但须重做低流量误报观察。
+          expr: |
+            absent_over_time(
+              (sum by (service_name) (duration_milliseconds_bucket{span_kind="SPAN_KIND_SERVER"}))[10m:]
+            ) == 1
+          for: 0m
+          labels:
+            namespace: otel-demo
+          annotations:
+            summary: "SERVER span metrics absent ≥10m for {{ $labels.service_name }}"
+            description: "SERVER-span metric stream for this service has been absent for 10 minutes — low traffic or metrics pipeline break (010 blind-spot coverage)."

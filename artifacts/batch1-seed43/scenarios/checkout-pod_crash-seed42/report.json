@@ -1,0 +1,90 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T09:22:46.386664+00:00",
+  "investigation_end_ts": "2026-09-18T09:23:05.922931+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed by a deployment spec change ('Container checkout definition changed, will be restarted'). Its replacement pod cannot start because the sandbox image gcr.io/google-containers/pause:latest fails to pull (DeadlineExceeded → ErrImagePull/ImagePullBackOff), leaving checkout in a crash-loop back-off and unable to serve any traffic.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=1)",
+          "observed_value": "count=1 during incident window",
+          "expected_baseline": "no container kill/restart events for a healthy pod"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff (count=4)",
+          "observed_value": "count=4 during incident window",
+          "expected_baseline": "0 ImagePullBackOff events"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a (count=2)",
+          "observed_value": "count=2, sandbox image pull DeadlineExceeded",
+          "expected_baseline": "sandbox image pulled successfully, no pull failures"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.018, p50=0.000, max=0.057 req/s",
+          "expected_baseline": "healthy checkout serves a continuous multi-req/s stream"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=checkout, error_only=True) -> no traces found",
+          "observed_value": "0 checkout server spans emitted during window",
+          "expected_baseline": "checkout emits server spans continuously"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Frontend error rate spiked because it calls checkout, which is unavailable; this is downstream propagation of the checkout outage, not an independent frontend fault.",
+      "confidence": 0.35,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.063, p50=0.061, max=0.171 errors/s",
+          "expected_baseline": "frontend error_rate near 0 when checkout is healthy"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "unknown",
+      "description": "Residual suspicion that the sandbox image pull failure stems from node registry/network issues (gcr.io DeadlineExceeded); however, the dominant observable is the checkout pod crash-loop, so the image-pull path is treated as the recovery blocker rather than a separate root cause.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=4)",
+          "observed_value": "count=4 back-offs on sandbox image pull",
+          "expected_baseline": "0 back-off events"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Roll back the checkout Deployment to the previous working container definition — the event 'Container checkout definition changed, will be restarted' shows a recent spec change triggered the kill.",
+    "Fix the sandbox image pull failure: pulls of gcr.io/google-containers/pause:latest fail with DeadlineExceeded — verify registry/DNS connectivity, use an accessible mirror or pre-seed the pause image on the node, or set imagePullPolicy: IfNotPresent.",
+    "Restart/recreate the checkout pod once the image pull path is restored so it leaves ImagePullBackOff and becomes Ready.",
+    "Verify checkout request_rate and frontend error_rate return to baseline after recovery."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.4286,
+  "latency_s": 19.536267,
+  "cost_usd": 0.0017342999999999998,
+  "total_prompt_tokens": 6558,
+  "total_completion_tokens": 1251,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

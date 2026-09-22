@@ -1,0 +1,20 @@
+[
+  {
+    "type": "Normal",
+    "reason": "Updated",
+    "message": "Successfully update ObservedGeneration and FailedMessage of resource",
+    "count": 1,
+    "first_time": "2026-09-16 07:47:32+00:00",
+    "last_time": "2026-09-16 07:47:32+00:00",
+    "involved_object_name": "product-catalog-5bb7676754-krmfz"
+  },
+  {
+    "type": "Normal",
+    "reason": "Updated",
+    "message": "Successfully update ObservedGeneration and FailedMessage of resource",
+    "count": 1,
+    "first_time": "2026-09-16 07:52:32+00:00",
+    "last_time": "2026-09-16 07:52:32+00:00",
+    "involved_object_name": "product-catalog-5bb7676754-krmfz"
+  }
+]

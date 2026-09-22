@@ -1,0 +1,103 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-16T10:19:07.466699+00:00",
+  "investigation_end_ts": "2026-09-16T10:19:33.287421+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout pod's container was killed and restarted during the incident window (Killing/Started/Created events), and the pod sandbox repeatedly failed to pull the pause image, entering ErrImagePull/ImagePullBackOff/BackOff. This crash/restart loop of the checkout workload is the dominant fault signal.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=1)",
+          "observed_value": "checkout container killed/restarted (count=1 within 600s window)",
+          "expected_baseline": "0 container-kill events during steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=4)",
+          "observed_value": "4 BackOff events plus ErrImagePull (count=3) and ImagePullBackOff (count=4) for the pod sandbox container",
+          "expected_baseline": "0 image pull failures for pod sandbox"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a (count=2)",
+          "observed_value": "2 image pull deadline-exceeded failures for pause sandbox image",
+          "expected_baseline": "0 failed image pulls"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts mean=0.000, max=0.000 across window",
+          "expected_baseline": "0 restarts; restart counter sampled at 0 but kill/restart events confirm crash activity"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "error_rate < 0.01; absence of request errors is consistent with a restart-based crash rather than propagated request failures"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "checkout fans out to cart, payment, email, shipping, currency and product-catalog; a downstream outage could stall or crash checkout, but no downstream error signal propagated into checkout during the window, making this less likely than a direct pod crash.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate=0.000 (no downstream-propagated errors surfaced)",
+          "expected_baseline": "dependency failure would raise checkout error_rate above baseline"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=checkout error_only=true (2026-09-16T07:34:41Z–07:41:42Z)",
+          "observed_value": "no traces found",
+          "expected_baseline": "error traces present if downstream dependency drove failures"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "memory_stress",
+      "description": "Resource pressure (e.g. OOM) could force a container restart, but no OOMKilled events or elevated CPU/memory utilization were observed for checkout, so resource stress is a low-probability explanation.",
+      "confidence": 0.08,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.001, p99=0.003, max=0.003 (no stress)",
+          "expected_baseline": "cpu/resource stress would show sustained elevated usage"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"error\" (2026-09-16T07:34:41Z–07:41:42Z)",
+          "observed_value": "no logs found",
+          "expected_baseline": "OOM/memory errors would appear in checkout error logs"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Describe the checkout pod to confirm the restart reason and whether the container is crash-looping (kubectl -n otel-demo describe pod -l app=checkout).",
+    "Restart/rollout the checkout deployment to clear the crash state and reschedule the pod.",
+    "Ensure the pod sandbox image (gcr.io/google-containers/pause) is pre-pulled/accessible on nodes to eliminate ErrImagePull/ImagePullBackOff back-off.",
+    "Review checkout container resource limits and liveness/readiness probes for misconfiguration causing container restarts.",
+    "Monitor kube_pod_container_status_restarts_total and pod Killing/Started events for checkout to verify recovery."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.6667,
+  "latency_s": 25.820722,
+  "cost_usd": 0.0032543,
+  "total_prompt_tokens": 4480,
+  "total_completion_tokens": 1606,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

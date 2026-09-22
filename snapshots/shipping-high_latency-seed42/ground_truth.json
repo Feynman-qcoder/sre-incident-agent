@@ -1,0 +1,13 @@
+{
+  "scenario_id": "shipping-high_latency-seed42",
+  "fault_service": "shipping",
+  "fault_type": "high_latency",
+  "chaos_kind": "NetworkChaos",
+  "injection_ts": "2026-09-16T08:10:46.968916+00:00",
+  "recovery_ts": "2026-09-16T08:15:47.199366+00:00",
+  "seed": 42,
+  "chaos_manifest_hash": "78187946839d86b3",
+  "window_start": "2026-09-16T08:09:46.968916+00:00",
+  "window_end": "2026-09-16T08:16:47.199366+00:00",
+  "validation_passed": true
+}

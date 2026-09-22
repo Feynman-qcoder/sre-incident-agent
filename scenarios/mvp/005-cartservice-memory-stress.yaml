@@ -1,0 +1,37 @@
+metadata:
+  scenario_id: cart-memory_stress-seed42
+  fault_service: cart
+  fault_type: memory_stress
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  # Stress saturates this host; snapshot at peak load OOM-crashes Prometheus. Settle after
+  # recovery before the query burst (data is retained). See ADR-006.
+  snapshot_settle_s: 90
+  namespace: otel-demo
+  description: >
+    Memory stress on cart (400MB allocation). cart's limit is 160Mi, so the allocation
+    exceeds it and triggers an OOMKill + restart. The honest signal of a memory fault that
+    hits the limit is the OOMKill, not a working_set spike (the kernel caps it, and cart can
+    never be top-3 absolute vs multi-GB infra pods). Gate (ADR-007): accept a >=3x working_set
+    jump OR a pod_restarts |z|>=2 outlier (the OOMKill). The container will keep being killed
+    for the fault duration, so restarts accumulate clearly on cart.
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: StressChaos
+  metadata:
+    name: cart-memory-stress-seed42
+    namespace: chaos-mesh
+  spec:
+    mode: all
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: cart
+    stressors:
+      memory:
+        workers: 1
+        size: "400MB"
+    duration: "300s"

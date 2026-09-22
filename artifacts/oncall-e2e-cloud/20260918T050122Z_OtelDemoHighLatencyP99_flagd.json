@@ -1,0 +1,97 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-6db6d1e6",
+  "investigation_start_ts": "2026-09-18T05:00:48.763729+00:00",
+  "investigation_end_ts": "2026-09-18T05:01:22.072364+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog, a shared leaf dependency of frontend, checkout, and recommendation, is exhibiting saturated server-side p99 latency (~10000ms), which propagates as ~10s response times up the call graph to its callers. Resource usage and pod health are normal, consistent with an injected latency fault.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms (mean=10000, p50=10000, max=10000) — saturated",
+          "expected_baseline": "p99 < 50 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=4.690 ms (mean=2.711) — healthy",
+          "expected_baseline": "p99 < 10 ms for a healthy leaf service"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms — frontend caller of product-catalog saturated",
+          "expected_baseline": "p99 < 100 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=1.615, max=2.149 cores (no anomaly flagged)",
+          "expected_baseline": "no CPU anomaly detected during window"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=34,934,199 bytes (~35 MB), max=41,824,256 bytes",
+          "expected_baseline": "no memory anomaly detected"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "product-catalog shows sustained CPU consumption up to ~2.15 cores with p95=2.12, which could throttle request handling and inflate p99 latency; however the anomaly detector did not flag it, making this a secondary suspect.",
+      "confidence": 0.28,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=1.615, p95=2.120, max=2.149 cores",
+          "expected_baseline": "no anomaly detected; low steady-state CPU expected for Go product-catalog"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "checkout's p99 is saturated at ~10000ms because it synchronously depends on product-catalog (along with frontend and recommendation). This is downstream propagation of the product-catalog latency rather than an independent checkout fault.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms (mean=10000, max=10000)",
+          "expected_baseline": "p99 < 100 ms"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Scheduled: Successfully assigned otel-demo/product-catalog-5bb7676754-hcfpv to otel-sre-copilot-control-plane",
+          "observed_value": "Only a normal Scheduling event for product-catalog; no OOMKilled/BackOff restart events",
+          "expected_baseline": "no crash-loop or resource-pressure events"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog pod network/response behavior for injected latency (e.g. tc netem / latency sidecar) and remove the latency fault on product-catalog.",
+    "Restart/roll the product-catalog deployment to clear a stuck latency condition; confirm p99 returns to sub-100ms.",
+    "Verify frontend, checkout, and recommendation p99 recover once product-catalog latency normalizes, confirming downstream propagation.",
+    "Add caching, request hedging, or circuit-breaker timeouts on product-catalog callers (frontend, checkout, recommendation) to reduce blast radius of a slow shared dependency.",
+    "If CPU is found throttled, raise product-catalog CPU limits/requests or scale replicas horizontally."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.7,
+  "latency_s": 33.308635,
+  "cost_usd": 0.0036176,
+  "total_prompt_tokens": 4882,
+  "total_completion_tokens": 1818,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

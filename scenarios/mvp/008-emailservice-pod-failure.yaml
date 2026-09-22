@@ -1,0 +1,29 @@
+metadata:
+  scenario_id: email-pod_crash-seed42
+  fault_service: email
+  fault_type: pod_crash
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Batch-1 new scenario 008: email pod down (pod-failure, whole window). Unlike 007's
+    container-kill (second-level restart, below detection granularity), pod-failure keeps
+    the pod Pending/unavailable for 5 minutes so KubePodNotReady fires reliably (class-A
+    chain). Expected: email request_rate drops to ~0, KubePodNotReady + ReplicaMismatch.
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: PodChaos
+  metadata:
+    name: email-pod-failure-seed42
+    namespace: chaos-mesh
+  spec:
+    action: pod-failure
+    mode: one
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: email
+    duration: "300s"

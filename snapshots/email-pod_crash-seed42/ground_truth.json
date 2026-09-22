@@ -1,0 +1,13 @@
+{
+  "scenario_id": "email-pod_crash-seed42",
+  "fault_service": "email",
+  "fault_type": "pod_crash",
+  "chaos_kind": "PodChaos",
+  "injection_ts": "2026-09-18T08:10:54.122137+00:00",
+  "recovery_ts": "2026-09-18T08:15:55.391337+00:00",
+  "seed": 42,
+  "chaos_manifest_hash": "727da790d6df9c83",
+  "window_start": "2026-09-18T08:09:54.122137+00:00",
+  "window_end": "2026-09-18T08:16:55.391337+00:00",
+  "validation_passed": false
+}

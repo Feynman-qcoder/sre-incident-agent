@@ -1,0 +1,108 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-5da54298",
+  "investigation_start_ts": "2026-09-18T10:38:27.149694+00:00",
+  "investigation_end_ts": "2026-09-18T10:38:50.694542+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout's server-side latency is pinned at the 10s histogram ceiling (p50=p95=p99=10000ms) for the entire window while its error rate, CPU and restart counts remain at baseline. Frontend inherits the elevated latency because it calls checkout on the purchase flow. The HighErrorRate alert name is misleading; this is a latency regression, not an error/abort fault.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency mean=10000ms, p50=10000ms, p95=10000ms, max=10000ms (ceiling saturation)",
+          "expected_baseline": "checkout p99 server latency < 100ms (normal)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency mean=10000ms, p50=10000ms, p95=10000ms, max=10000ms",
+          "expected_baseline": "frontend p99 server latency < 500ms (normal)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "89377bdf2afa5e85",
+          "observed_value": "checkout trace 89377bdf2afa5e85 (user_browse_product) duration=15000ms, status=ok; 20 traces, 0 with errors, p95_duration=46503ms",
+          "expected_baseline": "checkout trace duration < 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.002, p95=0.008, p99=0.009, max=0.010 (near baseline)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.031, flat (no spike)",
+          "expected_baseline": "stable, no saturation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000 (no restarts)",
+          "expected_baseline": "0 restarts"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend server latency is also saturated at the 10s ceiling, consistent with it being a consumer of the slow checkout service; likely propagated rather than an independent fault.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency mean=10000ms, p50=10000ms, p95=10000ms, max=10000ms",
+          "expected_baseline": "frontend p99 server latency < 500ms (normal)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "A slow downstream dependency of checkout (cart, payment, shipping, currency, product-catalog, email) could introduce multi-second latency, but no downstream service showed an isolated localized latency spike in the metrics queried, making this less supported than a checkout-internal latency fault.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=shipping, min_duration_ms=2000)",
+          "observed_value": "20 traces, 0 errors, p95_duration=46503ms (same slow traces as checkout, no isolated shipping latency spike)",
+          "expected_baseline": "shipping p99 < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Break down checkout server spans by child dependency (cart, payment, shipping, currency, product-catalog, email) to identify the internal call adding multi-second latency.",
+    "Inspect flagd feature-flag configuration active during the window and disable any latency/fault-injection flag affecting checkout (and frontend).",
+    "Add a latency SLO alert on checkout p99 rather than relying solely on the HighErrorRate alert, since errors stayed at baseline while latency saturated.",
+    "After the responsible flag/egress is disabled, verify checkout and frontend p99 latency returns below 100ms/500ms respectively."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.85,
+  "latency_s": 23.544848,
+  "cost_usd": 0.004085200000000001,
+  "total_prompt_tokens": 6563,
+  "total_completion_tokens": 1703,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

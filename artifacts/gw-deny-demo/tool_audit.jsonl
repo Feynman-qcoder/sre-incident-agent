@@ -1,0 +1,3 @@
+{"incident_id": "DENY-DEMO", "tool": "get_pod_events", "args_summary": "{\"namespace\": \"kube-system\", \"pod_prefix\": \"core\"}", "verdict": "DENY", "reason": "namespace_out_of_scope", "latency_ms": 0.0, "error": "", "ts": "2026-09-18T06:32:43.623160+00:00"}
+{"incident_id": "DENY-DEMO", "tool": "delete_deployment", "args_summary": "{\"name\": \"checkout\"}", "verdict": "DENY", "reason": "not_in_allowlist", "latency_ms": 0.0, "error": "", "ts": "2026-09-18T06:32:43.624094+00:00"}
+{"incident_id": "DENY-DEMO", "tool": "get_pod_events", "args_summary": "{\"namespace\": \"otel-demo\", \"pod_prefix\": \"checkout\"}", "verdict": "ALLOW", "reason": "executed", "latency_ms": 1.1, "error": "", "ts": "2026-09-18T06:32:43.625867+00:00"}

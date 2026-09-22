@@ -1,0 +1,72 @@
+{
+  "incident_id": "cart-memory_stress-seed42",
+  "investigation_start_ts": "2026-09-18T06:00:52.169013+00:00",
+  "investigation_end_ts": "2026-09-18T06:01:10.425461+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "The cart service experienced memory pressure during the incident window: its container working set (~93MB mean, peaking ~108MB) is roughly 4x peer services (~24MB for product-catalog and checkout), accompanied by a p99 latency spike and container recreation/restarts. This is the dominant anomaly matching the memory_stress fault.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "mean=93337463 bytes (~93MB), p95=108041011 (~108MB), max=108339200 (~108MB)",
+          "expected_baseline": "peer services product-catalog ~24.2MB and checkout ~24.7MB; cart is ~4x peers"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=24191249 bytes (~24MB)",
+          "expected_baseline": "normal leaf-service working set ~24MB"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "mean=24669661 bytes (~24.7MB)",
+          "expected_baseline": "normal leaf-service working set ~24MB"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=12.136ms, p95=53.276ms, max=78.573ms with anomaly detected in window",
+          "expected_baseline": "p99 latency well under 10ms in steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "max=1.031 restarts in window",
+          "expected_baseline": "0 restarts in steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Pulled: Container image \"ghcr.io/open-telemetry/demo:3.0.0-cart\" already present on machine and can be accessed by the pod (count=2)",
+          "observed_value": "cart container Pulled/Created/Started count=2 indicating container recreation",
+          "expected_baseline": "no container recreation events in steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 throughout window",
+          "expected_baseline": "error_rate < 0.01; confirms absence of an error/http_abort signature"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable the cart memory_stress fault via the fault-injection control plane (flagd) for the seed42 scenario.",
+    "Inspect and raise the cart pod memory limits/requests, and investigate a possible memory leak — the cart working set (~93-108MB) ran ~4x its peer services.",
+    "Verify cart container restart/recreation stops and p99 latency returns below 10ms after the fault is removed.",
+    "Add alerting on cart container_memory_working_set_bytes relative to peer baseline and on container restart counts."
+  ],
+  "fault_type_classification": "memory_stress",
+  "grounding_score": 1.0,
+  "latency_s": 18.256448,
+  "cost_usd": 0.0030337999999999997,
+  "total_prompt_tokens": 5194,
+  "total_completion_tokens": 1158,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

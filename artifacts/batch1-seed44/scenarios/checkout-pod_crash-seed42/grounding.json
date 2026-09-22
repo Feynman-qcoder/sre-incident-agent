@@ -1,0 +1,29 @@
+{
+  "grounding_score": 0.625,
+  "verified": 5,
+  "total": 8,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed t",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\"",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": true
+}

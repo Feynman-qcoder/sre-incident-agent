@@ -1,0 +1,36 @@
+{
+  "grounding_score": 0.5,
+  "verified": 4,
+  "total": 8,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Failed: Error: ImagePullBackOff",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "2",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "3",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": true
+}

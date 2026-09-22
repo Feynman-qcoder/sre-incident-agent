@@ -1,0 +1,101 @@
+{
+  "incident_id": "payment-http_abort-seed42",
+  "investigation_start_ts": "2026-09-18T09:23:24.954312+00:00",
+  "investigation_end_ts": "2026-09-18T09:23:55.408955+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "http_abort",
+      "description": "An HTTP-boundary abort fault on the payment service causes checkout's outbound gRPC call to payment to never complete normally, so checkout blocks until its 10s deadline (checkout p99=10000ms, frontend p99=10000ms). Because the abort occurs at the HTTP boundary, payment emits no completed/errored server span, leaving its own server-side error_rate (0) and latency (p99~4.9ms) metrics completely normal.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000 (mean=9161.667)",
+          "expected_baseline": "checkout p99 < 500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=4.880 p95=4.932 p99=4.938 max=4.940 (normal)",
+          "expected_baseline": "payment p99 < 10ms — server side unaffected by HTTP-boundary fault"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no anomaly)",
+          "expected_baseline": "error_rate < 0.01; fault hidden at HTTP boundary so payment records no errored server span"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=46.221 p95=10000.000 p99=10000.000 max=10000.000",
+          "expected_baseline": "frontend p99 < 200ms — propagated upstream victim"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "payment",
+      "fault_type": "dependency_failure",
+      "description": "Alternative hypothesis: a network partition/boundary fault isolating payment prevents checkout's outbound call to payment from ever completing, blocking checkout until its 10s deadline; payment never receives/completes requests so its server error_rate, latency and resource metrics stay normal. Indistinguishable from http_abort by server-side metrics alone.",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.010 p95=0.038 (nominal/low)",
+          "expected_baseline": "payment request_rate steady under normal load"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu=0.007 (flat, no saturation)",
+          "expected_baseline": "no CPU pressure during incident"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000",
+          "expected_baseline": "0 restarts — payment pod healthy and not crashed"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Symptom-level: checkout exhibits the latency spike (p99 pinned exactly at the 10s deadline) as the direct victim of the blocked downstream payment call. This is a propagated effect, not the originating fault.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000ms (deadline-bound)",
+          "expected_baseline": "checkout p99 < 500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.010 p95=0.038 (throughput collapsed by blocked calls)",
+          "expected_baseline": "steady checkout request_rate"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable / roll back the flagd flag injecting the http_abort fault on the payment service to restore normal HTTP responses.",
+    "Restart the payment deployment pods to clear any stuck/aborted connection state and re-establish checkout→payment gRPC channels.",
+    "Verify checkout p99 latency returns below 500ms and frontend p99 below 200ms, confirming downstream calls complete well under the 10s deadline."
+  ],
+  "fault_type_classification": "http_abort",
+  "grounding_score": 1.0,
+  "latency_s": 30.454643,
+  "cost_usd": 0.002106,
+  "total_prompt_tokens": 7044,
+  "total_completion_tokens": 1749,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

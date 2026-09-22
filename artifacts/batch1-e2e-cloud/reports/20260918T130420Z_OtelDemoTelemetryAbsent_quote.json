@@ -1,0 +1,96 @@
+{
+  "incident_id": "watchdog-OtelDemoTelemetryAbsent-3fa4f1b3",
+  "investigation_start_ts": "2026-09-18T13:03:22.327476+00:00",
+  "investigation_end_ts": "2026-09-18T13:04:20.680646+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "pod_crash",
+      "description": "The product-catalog pod stopped serving for the entire window: its server-span request rate is flat zero with no request/error logs, and its container CPU sits at ~0.001 cores (idle) versus ~0.286 for the healthy frontend. As the central leaf dependency of frontend, checkout and recommendation, its loss produced the namespace-wide span-telemetry blackout and multi-second caller timeouts with no application errors.",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000 p50=0.000 p95=0.000 p99=0.000 max=0.000",
+          "expected_baseline": "product-catalog server request_rate > 0 (steady-state under load-generator traffic)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.001 cores; frontend comparison sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m])) = mean=0.286, max=0.657",
+          "expected_baseline": "~0.1-0.3 cores while actively serving (frontend at 0.286 in same window)"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"product-catalog\"}",
+          "observed_value": "no logs found between 10:50 and 13:03 (checkout and frontend log selectors also returned no logs)",
+          "expected_baseline": "continuous request/health log lines for an active product-catalog pod"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=\"product-catalog\", error_only=True, 2026-09-18T10:50:00Z→13:03:22Z)",
+          "observed_value": "20 traces, 0 with errors, p95_duration=17714ms (user_add_to_cart 10002ms, user_view_cart 5000ms)",
+          "expected_baseline": "p95 well under 1s; round 5s/10s durations indicate callers hanging on an unavailable dependency"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "Alternative interpretation: a latency-injection fault against product-catalog stalls its responses so that upstream spans hang at characteristic round-number timeouts (5000ms / 10002ms) without raising error status codes, which would also suppress normal server-span throughput.",
+      "confidence": 0.26,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=\"product-catalog\", error_only=True, 2026-09-18T10:50:00Z→13:03:22Z)",
+          "observed_value": "p95_duration=17714ms; individual spans user_add_to_cart=10002ms, user_view_cart=5000ms, all status ok",
+          "expected_baseline": "sub-second p95 and no multi-second round-number span durations"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000 (no errors despite extreme latency)",
+          "expected_baseline": "error_rate < 0.01; a pure latency fault yields high duration with zero error status, matching this pattern"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "The frontend (and checkout) call product-catalog directly; with that leaf unavailable their inbound server spans drop to zero in the metric pipeline while their surviving traces show long hangs — a downstream-dependency failure propagating from product-catalog rather than a fault originating in frontend itself.",
+      "confidence": 0.12,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000 p50=0.000 p95=0.000 p99=0.000 max=0.000 (frontend server request_rate flat zero)",
+          "expected_baseline": "frontend server request_rate > 0 while load-generator drives traffic"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000",
+          "expected_baseline": "checkout error_rate < 0.01; absence of errors alongside zero throughput points to dependency unavailability rather than an in-service exception"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm product-catalog pod health and history: kubectl get pods -n otel-demo -l app.kubernetes.io/name=product-catalog and kubectl describe pod <product-catalog-pod> to inspect restart count, termination reason and last state.",
+    "Inspect whether the pod was killed (Killing/Stopping container, SuccessfulDelete then reschedule) and whether a chaos/pod-kill fault is injected against product-catalog; stop the fault injection if present.",
+    "If the container is OOM/probe-failing, raise limits / fix readiness probe; otherwise verify the replacement pod reaches Ready and resumes serving spans before clearing the watchdog.",
+    "Validate the telemetry pipeline recovery: confirm calls_total span metrics and Loki logs resume for product-catalog, frontend and checkout, and that end-to-end trace p95 returns to sub-second."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.6,
+  "latency_s": 58.35317,
+  "cost_usd": 0.004762799999999999,
+  "total_prompt_tokens": 7833,
+  "total_completion_tokens": 1925,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

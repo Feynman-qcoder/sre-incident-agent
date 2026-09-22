@@ -1,0 +1,90 @@
+{
+  "incident_id": "watchdog-OtelDemoHighClientErrorRate-5ea53e32",
+  "investigation_start_ts": "2026-09-18T10:34:32.372139+00:00",
+  "investigation_end_ts": "2026-09-18T10:35:18.639545+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend server-side request path is stalling: its p99 latency is pinned at the 10000 ms histogram ceiling and all sampled frontend spans (user_browse_product, user_get_ads, user_get_recommendations) run ~15 s. This elevated response time produces the non-zero client-facing error rate that triggered the HighClientErrorRate watchdog alert.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=p95=p99=max=10000.000 ms (pinned at histogram ceiling)",
+          "expected_baseline": "frontend p99 < 1000 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.038/s, p95=0.076/s, max=0.076/s",
+          "expected_baseline": "frontend error_rate < 0.01/s"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "90f0d1dc5c26d8bc",
+          "observed_value": "user_get_recommendations span duration=15000 ms (frontend trace sweep p95_duration=30750 ms)",
+          "expected_baseline": "frontend endpoint p95 < 500 ms"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "recommendation is a direct dependency of frontend and historically exhibits injected fixed-latency behavior pinned at 10000 ms; a latency injection here would propagate to the frontend request path. However, in this window recommendation serves zero requests, so its contribution to the observed frontend stall cannot be confirmed.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.000/s (no server traffic)",
+          "expected_baseline": "recommendation request_rate > 0/s under load"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "no data returned (no recommendation server spans in window)",
+          "expected_baseline": "recommendation p99 < 1000 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "product-catalog",
+      "fault_type": "dependency_failure",
+      "description": "product-catalog is a shared downstream of both frontend and recommendation and is a candidate origin for the frontend stall, but it reports zero errors and zero request rate in the window, so this remains unconfirmed.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000/s",
+          "expected_baseline": "product-catalog error_rate < 0.01/s"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.000/s (no server traffic)",
+          "expected_baseline": "product-catalog request_rate > 0/s under load"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the frontend deployment/config for an injected latency or raised response timeout on the request path (all user_* endpoints ~15 s, p99 pinned at 10000 ms) and roll back the last config/flag change affecting frontend.",
+    "Trace a slow user_browse_product request end-to-end once trace fetch is available to confirm whether the ~10-15 s stall originates inside frontend or in a downstream dependency (recommendation, product-catalog, ad).",
+    "Verify downstream capacity/health (recommendation, product-catalog, checkout, ad) since they report zero request rate in-window, indicating frontend is not completing downstream calls.",
+    "Investigate the unrelated quote pod restart (ImagePullBackOff / BackOff pulling gcr.io/google-containers/pause:latest) separately as a possible secondary infra issue."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.7,
+  "latency_s": 46.267406,
+  "cost_usd": 0.00467775,
+  "total_prompt_tokens": 7896,
+  "total_completion_tokens": 1823,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

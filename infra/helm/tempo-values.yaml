@@ -1,0 +1,39 @@
+# Grafana Tempo — single-binary mode for local kind cluster
+#
+# ⚠️ NodePort 固化说明（2026-09-17 P1.5 实测，chart tempo-1.24.4）：
+#   `service.type: NodePort` 生效（下方保留）；但 chart 模板的 ports 段**不支持
+#   指定 nodePort 号**（顶层 `service.nodePort` 字段会被静默忽略 → K8s 随机分配，
+#   R1′ 重建实测 31971）。端口号固化必须在 make up 后用 kubectl patch：
+#
+#     kubectl -n monitoring patch svc tempo --type=json \
+#       -p '[{"op":"replace","path":"/spec/ports/2/nodePort","value":30200}]'
+#     # ports[2] = tempo-prom-metrics (3200)；patch 前先 kubectl get svc tempo -o json
+#     # 核对 3200 端口的 index。kind-config 映射：hostPort 3200 → containerPort 30200。
+tempo:
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+  retention: 24h
+
+# Expose via NodePort（type 生效；nodePort 号见文件头 patch 说明）
+service:
+  type: NodePort
+
+# Accept OTLP gRPC (from OTel Collector)
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi

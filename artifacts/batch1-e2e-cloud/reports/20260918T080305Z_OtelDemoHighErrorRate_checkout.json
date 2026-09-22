@@ -1,0 +1,102 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-5da54298",
+  "investigation_start_ts": "2026-09-18T08:02:26.366853+00:00",
+  "investigation_end_ts": "2026-09-18T08:03:05.661762+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout's server-side latency is saturated at the 10s histogram ceiling for the entire window (p50=p95=p99=10000ms) while its error rate stays near baseline (mean 0.004, max 0.019). This is a latency regression, not an error/abort fault, despite the HighErrorRate alert name.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency=10000ms pegged (mean=p50=p95=p99=max=10000) across window",
+          "expected_baseline": "checkout server span p99 < 500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.004, p95=0.015, max=0.019 (no error spike)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.025, max=0.026 (normal)",
+          "expected_baseline": "cpu stable, no throttle spike"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "memory ~38.65MB flat (mean=38653132, max=38957056) (normal)",
+          "expected_baseline": "memory stable, no growth"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0",
+          "expected_baseline": "0 restarts"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend entry point shows p99 pegged at the 10s ceiling and all sampled user journeys (browse, add-to-cart, checkout) run 15–30s with zero errors, inheriting and propagating the slowdown seen in checkout.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency=10000ms pegged (mean=p50=p95=p99=max=10000)",
+          "expected_baseline": "frontend server span p99 < 500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.008, max=0.038 (no meaningful error spike)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "unknown",
+      "fault_type": "dependency_failure",
+      "description": "No service exhibited an error spike or pod restart/OOM events, yet multi-second stalls appear across browse, cart and checkout journeys, suggesting a shared downstream dependency or injected fault (e.g. flag-driven) rather than a single crashing service.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=checkout error_only=true",
+          "observed_value": "20 traces, 0 with errors, p95_duration=46512ms; user_checkout_single=30006ms, user_add_to_cart=15005ms, user_browse_product=15000ms",
+          "expected_baseline": "p95 duration < 1s, 0 errors only when healthy"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events namespace=otel-demo pod_name_prefix=checkout",
+          "observed_value": "no K8s events found (no OOMKill/BackOff/FailedMount)",
+          "expected_baseline": "no events in healthy state"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Break down checkout server spans by child dependency (cart, payment, shipping, currency, product-catalog, email) to locate the internal call adding multi-second latency.",
+    "Inspect flagd feature-flag configuration active during the window and disable any latency/fault injection flag affecting checkout and frontend.",
+    "Check pod CPU throttling and GC pauses for checkout and frontend (cpu ~0.025 and memory ~38MB look normal, no restarts), indicating an application/network-level induced latency rather than resource exhaustion.",
+    "Roll back or restart the degraded checkout/frontend deployment once the inducing call is identified, and add a p99 latency alert since the HighErrorRate alert masked a latency-only fault."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.78,
+  "latency_s": 39.294909,
+  "cost_usd": 0.0043679999999999995,
+  "total_prompt_tokens": 7107,
+  "total_completion_tokens": 1791,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

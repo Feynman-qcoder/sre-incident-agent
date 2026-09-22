@@ -1,0 +1,103 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-6db6d1e6",
+  "investigation_start_ts": "2026-09-18T08:04:36.079000+00:00",
+  "investigation_end_ts": "2026-09-18T08:05:12.143202+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "The recommendation service exhibits extreme server-side latency: its p99 is saturated at the 10000ms histogram ceiling and its request traces run ~15s while reporting zero errors. This latency propagates upstream to frontend and checkout, which both depend on recommendation, producing the cluster-wide P99 latency watchdog alert.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000ms (mean=p50=p95=p99=max=10000.000, saturated at ceiling)",
+          "expected_baseline": "recommendation p99 in low-tens of ms; healthy peer cart p99 observed at 4.015ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=recommendation, min_duration_ms=5000)",
+          "observed_value": "20 traces, 0 with errors, p95_duration=15759ms; top spans user_get_recommendations 15001ms (ok), 199ccde8385eca3a 15005ms (ok), user_browse_product 15000ms (ok)",
+          "expected_baseline": "recommendation spans in low tens of ms with no >5s outliers"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=4.015ms, max=4.100ms",
+          "expected_baseline": "healthy sibling downstream of checkout - confirms anomaly is isolated, not cluster-wide saturation"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"recommendation\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "no error logs - consistent with a pure latency fault rather than errors"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "checkout's p99 is pinned at the 10000ms ceiling while its CPU usage is normal (~0.025 cores) and its error rate is negligible (~0.011), indicating checkout is being slowed by a slow downstream dependency (recommendation/product-catalog path) rather than intrinsic CPU or error-driven failure.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000ms (mean=p50=p95=p99=max=10000.000)",
+          "expected_baseline": "checkout p99 should be low-tens of ms in normal operation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.025 cores (flat)",
+          "expected_baseline": "no CPU spike - rules out cpu_stress as the cause of checkout latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.011, max=0.019",
+          "expected_baseline": "error rate near zero - fault is latency, not an error/abort spike"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "frontend's p99 is also pinned at the 10000ms ceiling, but as the top-level orchestrator calling both checkout and recommendation its latency is most plausibly propagation of the downstream slowdown rather than an intrinsic frontend fault.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000ms (mean=p50=p95=p99=max=10000.000)",
+          "expected_baseline": "frontend p99 should track healthy downstreams (low-tens of ms)"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"frontend\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "no error logs - latency propagation rather than an error fault"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Investigate and scale out the recommendation deployment (increase replicas / CPU headroom) to relieve the saturated request handling producing ~15s traces.",
+    "Instrument the recommendation -> product-catalog call path with downstream client-span latency to confirm whether recommendation is blocked on a slow product-catalog dependency.",
+    "Check recommendation pod resource limits for CPU throttling and compare CPU usage vs. limits during the 08:02-08:04 UTC window.",
+    "Add client-side timeouts and circuit breakers on frontend and checkout calls to recommendation/high-latency dependencies to prevent P99 latency propagation cluster-wide.",
+    "Review recent flagd feature-flag and configuration changes affecting recommendation behavior during the incident window."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.8,
+  "latency_s": 36.064202,
+  "cost_usd": 0.0046389,
+  "total_prompt_tokens": 7119,
+  "total_completion_tokens": 2045,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

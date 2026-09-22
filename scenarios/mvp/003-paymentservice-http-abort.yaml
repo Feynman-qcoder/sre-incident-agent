@@ -1,0 +1,33 @@
+metadata:
+  scenario_id: payment-http_abort-seed42
+  fault_service: payment
+  fault_type: http_abort
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Request aborts on payment. payment is gRPC, so HTTPChaos (HTTP-only) cannot affect it;
+    NetworkChaos packet loss makes the gRPC calls fail instead. Expected signal: error_rate
+    spike on payment server spans and on its caller (checkout). fault_type is pinned to
+    http_abort in metadata (the mechanism is the manifest).
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: NetworkChaos
+  metadata:
+    name: payment-http-abort-seed42
+    namespace: chaos-mesh
+  spec:
+    action: loss
+    mode: all
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: payment
+    loss:
+      loss: "100"
+      correlation: "0"
+    direction: to
+    duration: "300s"

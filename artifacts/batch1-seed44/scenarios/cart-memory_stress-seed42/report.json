@@ -1,0 +1,65 @@
+{
+  "incident_id": "cart-memory_stress-seed42",
+  "investigation_start_ts": "2026-09-18T09:28:58.099207+00:00",
+  "investigation_end_ts": "2026-09-18T09:29:14.403041+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "The cart service is the dominant anomaly: its container working set averages ~93MB and peaks at ~108MB, roughly 4x peer services (checkout ~24.7MB, product-catalog ~24.2MB), while CPU (~0.035) and error rate (0.0) remain low. This isolated memory-pressure signature, accompanied by cart container recreation events, matches a memory_stress fault injected on cart.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "mean=93,337,463 bytes (~93MB), p99=108,279,562 bytes (~108MB), max=108,339,200 bytes",
+          "expected_baseline": "peer services ~24MB (checkout mean=24,669,661; product-catalog mean=24,191,249)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[2m]))",
+          "observed_value": "mean=0.035, max=0.102",
+          "expected_baseline": "low CPU; rules out cpu_stress as the dominant signal"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000, max=0.000",
+          "expected_baseline": "error_rate < 0.01; no functional errors — rules out http_abort/dependency_failure"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "mean=0.619, max=1.031",
+          "expected_baseline": "0 restarts in steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Created: Container created (count=2)",
+          "observed_value": "cart container created/started twice during window",
+          "expected_baseline": "single container start absent memory pressure"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=cart, error_only=True)",
+          "observed_value": "no error traces found",
+          "expected_baseline": "confirms isolated resource-pressure fault, not an error/latency fault"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable the cart memory_stress fault via the fault-injection control plane (flagd) for the seed42 scenario.",
+    "Raise the cart pod memory requests/limits and investigate a possible memory leak, since the cart working set (~93-108MB) ran ~4x its peer services (~24MB) and the container was recreated twice.",
+    "Monitor cart container_memory_working_set_bytes and restart counts after remediation to confirm the working set returns to the ~24MB peer baseline."
+  ],
+  "fault_type_classification": "memory_stress",
+  "grounding_score": 1.0,
+  "latency_s": 16.303834,
+  "cost_usd": 0.0012978,
+  "total_prompt_tokens": 4996,
+  "total_completion_tokens": 914,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

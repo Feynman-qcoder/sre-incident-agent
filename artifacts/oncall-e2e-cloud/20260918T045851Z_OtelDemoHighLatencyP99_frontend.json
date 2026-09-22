@@ -1,0 +1,97 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-998068de",
+  "investigation_start_ts": "2026-09-18T04:57:44.102449+00:00",
+  "investigation_end_ts": "2026-09-18T04:58:51.771603+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "product-catalog is burning 1-2 CPU cores (mean 0.952, max 2.149) while serving a very low request rate (~0.22 req/s), indicating injected CPU stress rather than organic load. The saturated CPU inflates response latency, driving p99 to the 10000ms ceiling and propagating to frontend and checkout which depend on it.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.952, p95=2.026, max=2.149 cores",
+          "expected_baseline": "~0.01-0.02 cores (frontend=0.018, recommendation=0.012 in same window)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.222, max=1.229 req/s",
+          "expected_baseline": "sub-1 req/s throughput with CPU saturation confirms stress, not load-driven"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency=10000ms (p95=10000ms, mean=5302ms)",
+          "expected_baseline": "p99 < 50ms for a leaf catalog read path"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "ada9012c00553803",
+          "observed_value": "product-catalog trace p95_duration=600033ms, 20 traces, 0 errors",
+          "expected_baseline": "p95 duration < 1000ms with 0 errors"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "Alternatively, a direct latency fault injected on product-catalog could pin p99 at the 10000ms ceiling. However the concurrent multi-core CPU spike favors CPU stress as the primary mechanism.",
+      "confidence": 0.4,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency=10000ms, mean=5302ms",
+          "expected_baseline": "p99 < 50ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "ada9012c00553803",
+          "observed_value": "product-catalog trace p95_duration=600033ms",
+          "expected_baseline": "p95 duration < 1000ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "frontend and checkout show p99 at 10000ms purely as downstream propagation from the slow product-catalog dependency they both call; they are victims, not the origin.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "frontend p99_latency=10000ms (p50=10000ms, mean=7402ms)",
+          "expected_baseline": "p99 < 200ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99_latency=10000ms (mean=6180ms)",
+          "expected_baseline": "p99 < 200ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm CPU stress on product-catalog by checking for a stress-ng / CPU-burn process inside the product-catalog pods.",
+    "Disable or reset the faulty flagd fault-injection flag targeting product-catalog (CPU stress) to restore normal CPU and latency.",
+    "If the fault is not injection-based, add CPU limits/requests and increase replicas for product-catalog to shed the CPU saturation.",
+    "Verify recovery by re-checking product-catalog p99 latency (<50ms) and CPU usage (<0.05 cores), then confirm frontend/checkout p99 returns to baseline.",
+    "Add alerting on product-catalog CPU saturation vs. request rate to distinguish stress from organic load."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.9,
+  "latency_s": 67.669154,
+  "cost_usd": 0.00439425,
+  "total_prompt_tokens": 7260,
+  "total_completion_tokens": 1765,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

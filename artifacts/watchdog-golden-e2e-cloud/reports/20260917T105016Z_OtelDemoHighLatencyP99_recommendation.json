@@ -1,0 +1,90 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-f919f10f",
+  "investigation_start_ts": "2026-09-17T10:47:57.185471+00:00",
+  "investigation_end_ts": "2026-09-17T10:50:16.430111+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog, a leaf service with no downstream dependencies, exhibits a severe p99 latency spike (~9600ms with max exactly 10000ms) during the incident window. The hard 10-second ceiling on span durations combined with normal CPU usage (0.011 cores) indicates an injected/abnormal delay (e.g., network latency fault injection or blocking call) in product-catalog rather than resource exhaustion.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=2007.572, p95=8001.918, p99=9600.384, max=10000.000, anomaly detected at 1789641610.696",
+          "expected_baseline": "p99_latency_ms < 20ms (leaf service; p50 observed at 9.513ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.011, p99=0.012, max=0.012, no anomaly detected",
+          "expected_baseline": "cpu_usage < 0.1 cores; rules out cpu_stress as the cause of the latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms = 1.980, no anomaly detected",
+          "expected_baseline": "p99_latency_ms ~2ms; confirms fault is isolated to the product-catalog path, not cluster-wide"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "checkout's p99 latency spiked to ~9400ms because it synchronously calls product-catalog (topology: checkout → cart, payment, email, shipping, currency, product-catalog) and inherits the downstream 10s delay. Its other leaf dependencies (payment, shipping) remained fast, confirming propagation rather than a local fault.",
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=1979.880, p95=7844.970, p99=9408.994, max=9800.000, anomaly detected",
+          "expected_baseline": "p99_latency_ms < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms = 1.980, no anomaly detected",
+          "expected_baseline": "p99_latency_ms ~2ms; checkout's other downstream dependencies are healthy"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "frontend p99 latency reached ~9600ms (max 10000ms) as the user-facing aggregation of checkout and direct product-catalog/recommendation calls, all slowed by the product-catalog delay. recommendation also degraded (~4627ms p99) since it calls product-catalog, corroborating a single upstream origin.",
+      "confidence": 0.8,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=2021.952, p95=8007.325, p99=9601.465, max=10000.000, anomaly detected",
+          "expected_baseline": "p99_latency_ms < 500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=967.976, p95=3856.994, p99=4627.399, max=4820.000, anomaly detected",
+          "expected_baseline": "p99_latency_ms < 100ms; recommendation → product-catalog dependency explains partial degradation"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog for an injected delay fault (e.g., ChaosMesh NetworkChaos latency experiment, service-mesh fault injection, or a blocking sleep in a recent code/config change) and remove or roll it back; the exact 10000ms max span duration indicates a fixed 10s delay.",
+    "Restart or redeploy product-catalog pods in namespace otel-demo to clear any stuck/blocking state if the delay persists after removing the fault source.",
+    "Add strict timeouts (well below 10s) and circuit breakers on product-catalog calls from checkout, frontend, and recommendation so a single slow dependency cannot inflate end-user p99 to 10s.",
+    "Verify recovery by re-querying p99 latency for product-catalog, checkout, and frontend after remediation and confirm the anomaly window closes."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.95,
+  "latency_s": 139.24464,
+  "cost_usd": 0.00354165,
+  "total_prompt_tokens": 4485,
+  "total_completion_tokens": 1878,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

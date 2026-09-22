@@ -1,0 +1,103 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-f919f10f",
+  "investigation_start_ts": "2026-09-17T14:17:02.540476+00:00",
+  "investigation_end_ts": "2026-09-17T14:17:44.721073+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog, a leaf service called by frontend, recommendation and checkout, responds with ~10s p50/p99 latency while all peer leaf services respond in ~2ms. Normal CPU, flat memory and zero restarts indicate an injected latency fault rather than resource saturation or a crash.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=5657.7ms p50=10000ms p95=10000ms p99=10000ms max=10000ms",
+          "expected_baseline": "p99 < 5ms (peer leaf services payment/shipping/cart/currency all ~2ms)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=product-catalog min_duration_ms=1000",
+          "observed_value": "20 traces, 0 with errors, p95_duration=149092ms (trace 163167d090e59c23 user_get_recommendations 16602ms, trace e6d712832358ded4 user_browse_product 12584ms)",
+          "expected_baseline": "no product-catalog spans > 1s"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.010 cores p99=0.011 max=0.011",
+          "expected_baseline": "no CPU saturation; pod CPU flat during window"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "0 restarts (mean=0.000 max=0.000)",
+          "expected_baseline": "0 restarts (no pod crash)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "error_rate < 0.01 — confirms latency, not error/abort fault"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "recommendation calls the slow product-catalog service and inherits its latency (p50 ~5s, p99 10s). It is a victim of upstream latency propagation rather than the origin of the fault.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=4937.4ms p50=4970ms p95=10000ms p99=10000ms max=10000ms",
+          "expected_baseline": "p99 < 10ms for a healthy recommendation service"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=product-catalog error_only=True",
+          "observed_value": "20 traces, 0 with errors, p95_duration=23334ms (trace 1da4c20736cd7b10 user_get_recommendations 22050ms, trace 5316a06ecc8c91eb 16087ms, status ok)",
+          "expected_baseline": "user_get_recommendations < 500ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "checkout depends on product-catalog and shows an anomalous p99 spike to 10000ms with a low p50, consistent with intermittent blocking on the slow product-catalog dependency propagating to the frontend.",
+      "confidence": 0.08,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=3268.2ms p50=24.85ms p95=10000ms p99=10000ms max=10000ms, anomaly [1789654135.817→1789654345.817]",
+          "expected_baseline": "p99 < 50ms for checkout server span"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Restart / roll the product-catalog deployment to clear any injected latency fault and restore sub-5ms p99 responses.",
+    "Inspect flagd feature-flag configuration for a product-catalog latency/failure flag and disable it if set.",
+    "Verify the product-catalog pod's network path (sidecar/DNS/egress) for added delay, since CPU/memory/restarts are all nominal.",
+    "Add a latency SLO alert on product-catalog server-span p99 to catch leaf-service slowness before it propagates to checkout/recommendation/frontend.",
+    "Temporarily scale product-catalog replicas to absorb request queuing while the latency fault is mitigated."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.82,
+  "latency_s": 42.180597,
+  "cost_usd": 0.0051702,
+  "total_prompt_tokens": 9300,
+  "total_completion_tokens": 1824,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

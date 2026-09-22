@@ -1,0 +1,108 @@
+{
+  "incident_id": "email-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T11:58:29.761234+00:00",
+  "investigation_end_ts": "2026-09-18T11:58:48.720106+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "email",
+      "fault_type": "pod_crash",
+      "description": "The email container in pod email-7699887dd9-rnbxw is being killed and restarted in a crash/back-off loop: K8s events show the container is terminated because its 'container definition changed' and then repeatedly fails to restart (Back-off restarting failed container email), while its caller (checkout) shows zero error propagation and sibling leaf services remain nominal.",
+      "confidence": 0.86,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off restarting failed container email in pod email-7699887dd9-rnbxw_otel-demo(c9cf2589-71fd-45ed-bb7c-39ada7acd0a9) (count=5)",
+          "observed_value": "count=5 back-off restarts of the email container during the window",
+          "expected_baseline": "0 back-off/restart events for a healthy pod"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container email definition changed, will be restarted (count=2)",
+          "observed_value": "count=2 container kills due to email container definition change",
+          "expected_baseline": "no container-definition-change kills"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"email-.*\"}[5m])) or vector(0)",
+          "observed_value": "0.000 across the window (rolling churn not captured by the restart counter)",
+          "expected_baseline": "0"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 — no error propagation from email to its caller checkout",
+          "expected_baseline": "0"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"email\"} |= \"error\"",
+          "observed_value": "no logs found for email in the window (pod churn suppresses log emission)",
+          "expected_baseline": "steady email logs with no error entries"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "email",
+      "fault_type": "dependency_failure",
+      "description": "Secondary hypothesis: the email pod also shows image pull failures for the pause container (ErrImagePull / ImagePullBackOff on gcr.io/google-containers/pause:latest). This could contribute to pod instability, but the dominant signal is the container-definition-change kill, so image pull issues are most likely collateral rather than the root cause.",
+      "confidence": 0.28,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ErrImagePull (count=6)",
+          "observed_value": "count=6 image pull failures for the pause container",
+          "expected_baseline": "0 image pull failures"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=6)",
+          "observed_value": "count=6 back-off attempts pulling the pause image",
+          "expected_baseline": "0"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "email",
+      "fault_type": "memory_stress",
+      "description": "Tertiary hypothesis: email memory working set shows transient elevation (p95/max ~154MB vs p50 ~41MB), which could indicate memory pressure. No OOMKilled events were observed and the dominant fault is the crash loop, so this is unlikely to be the root cause.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"email-.*\"})",
+          "observed_value": "mean=63279104, p50=40583168, p95=154060800, max=154103808 bytes",
+          "expected_baseline": "p50 ~40.6MB steady-state working set"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"email-.*\"}[2m]))",
+          "observed_value": "mean=0.000, p99=0.001, max=0.001 cores — no CPU stress",
+          "expected_baseline": "low idle CPU for a leaf service"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"email\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 — no server-side error rate spike recorded for email",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Run 'kubectl describe pod email-7699887dd9-rnbxw -n otel-demo' to read the restart/back-off events and container exit codes and confirm the pod is in CrashLoopBackOff.",
+    "Inspect the email container spec/ConfigMap for the recent 'container definition changed' trigger and roll back the change that forced repeated restarts.",
+    "Investigate why the pause image 'gcr.io/google-containers/pause:latest' cannot be pulled (ErrImagePull/ImagePullBackOff) to eliminate collateral pod instability.",
+    "After remediation, verify email pod stability via kube_pod_container_status_restarts_total and confirm checkout email-send calls complete without errors."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.6,
+  "latency_s": 18.958872,
+  "cost_usd": 0.0017628,
+  "total_prompt_tokens": 4740,
+  "total_completion_tokens": 1753,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

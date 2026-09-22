@@ -1,0 +1,120 @@
+{
+  "incident_id": "payment-network-partition-seed42",
+  "investigation_start_ts": "2026-09-18T11:59:36.220337+00:00",
+  "investigation_end_ts": "2026-09-18T12:00:10.659020+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "dependency_failure",
+      "description": "A network partition isolating the payment service prevents checkout's outbound gRPC call to payment from ever completing, so checkout blocks until its deadline and the delay propagates upstream to frontend. Because the fault is at the network boundary, payment emits no server spans and its own request_rate, error_rate and resource metrics stay flat/normal (zero errors, normal CPU, zero restarts), ruling out in-process faults.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 (mean/p50/p95/p99/max all 0.000 across window)",
+          "expected_baseline": "> 0.1 req/s server spans (payment is a live checkout dependency with inbound calls)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "0 (fault occurs before payment produces a span, so failures surface upstream as timeouts, not payment errors)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu mean=0.010, p99=0.016, max=0.017",
+          "expected_baseline": "normal (< 0.05 cores) — no CPU saturation, rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000",
+          "expected_baseline": "0 — rules out pod_crash/pod_kill"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Updated: Successfully update ObservedGeneration and FailedMessage of resource (count=1)",
+          "observed_value": "Only pod event for payment-* pods in window: flagd reconciliation update (count=1)",
+          "expected_baseline": "no abnormal pod lifecycle events; the sole k8s activity is the flagd config reconcile"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=checkout, error_only=True)",
+          "observed_value": "no traces found",
+          "expected_baseline": "errored checkout spans if the fault were in-process; absence is consistent with a boundary timeout on checkout→payment"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"payment\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "checkout error logs mentioning payment if the failure were application-level"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "checkout server request_rate=0.000",
+          "expected_baseline": "> 0 req/s — checkout request handling stalled while blocked on payment"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "payment",
+      "fault_type": "http_abort",
+      "description": "An abort injected at the payment HTTP/gRPC boundary drops checkout's outbound call before it reaches payment, producing the same zero-span / zero-error signature on payment while blocking checkout. Distinguished from the partition hypothesis only by inspection of the injected fault configuration (flagd flag vs. NetworkPolicy).",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 with payment error_rate=0.000",
+          "expected_baseline": "> 0.1 req/s and < 0.01 error_rate for a healthy payment service"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Updated: Successfully update ObservedGeneration and FailedMessage of resource (count=1)",
+          "observed_value": "flagd reconcile event on payment pods during window (count=1)",
+          "expected_baseline": "no fault-injection reconcile events expected in steady state"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "payment",
+      "fault_type": "pod_crash",
+      "description": "A pod crash of payment would also remove server spans, but this is strongly contradicted: restart counts are zero and no CrashLoopBackOff/OOMKilled events were observed. Included only as a low-probability alternative.",
+      "confidence": 0.08,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000",
+          "expected_baseline": ">= 1 restart if a pod_crash occurred"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Updated: Successfully update ObservedGeneration and FailedMessage of resource (count=1)",
+          "observed_value": "no CrashLoopBackOff / OOMKilled / FailedMount events for payment-*",
+          "expected_baseline": "crash-loop or kill events for a crashing pod"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect and remove/roll back any NetworkPolicy or network-partition injection isolating the payment pods in namespace otel-demo to restore connectivity between checkout and payment.",
+    "Disable/roll back the flagd flag reconciling on payment (the only k8s activity observed in the window) to clear any injected boundary fault.",
+    "Restart the payment deployment pods to re-establish checkout→payment gRPC channels and clear stuck/aborted connection state.",
+    "Verify recovery: confirm payment server-span request_rate returns to baseline and checkout p99 latency / frontend error_rate normalize."
+  ],
+  "fault_type_classification": "dependency_failure",
+  "grounding_score": 1.0,
+  "latency_s": 34.438683,
+  "cost_usd": 0.0021747,
+  "total_prompt_tokens": 5902,
+  "total_completion_tokens": 2149,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

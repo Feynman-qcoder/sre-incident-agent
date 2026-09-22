@@ -1,0 +1,12 @@
+2026-09-18 14:54:25 [info     ] injecting_fault                dry_run=False fault_service=email fault_type=pod_crash scenario_id=email-pod_crash-seed42
+2026-09-18 14:54:25 [info     ] waiting_for_fault_duration     seconds=300
+2026-09-18 14:59:27 [info     ] snapshotting_telemetry         end=2026-09-18T07:00:27.064346+00:00 start=2026-09-18T06:53:25.482861+00:00
+2026-09-18 14:59:27 [info     ] snapshotting_metrics           services=15
+2026-09-18 14:59:27 [info     ] snapshotting_traces            services=15
+2026-09-18 14:59:28 [info     ] fetching_full_traces           count=5
+2026-09-18 14:59:28 [info     ] snapshotting_logs              services=15
+2026-09-18 14:59:29 [info     ] snapshotting_k8s_events        namespace=otel-demo
+2026-09-18 14:59:29 [info     ] snapshot_complete              output_dir=snapshots/email-pod_crash-seed42
+2026-09-18 14:59:29 [warning  ] snapshot_validation_FAIL       best={'signal': 'request_rate', 'z': -0.49, 'rank': 4, 'fault_value': 0.0} fault_type=pod_crash hint='faulted service is not a clear outlier — fault may not have fired' service=email
+2026-09-18 14:59:29 [info     ] ground_truth_written           path=snapshots/email-pod_crash-seed42/ground_truth.json validation_passed=False
+2026-09-18 14:59:29 [info     ] injection_complete             output_dir=snapshots/email-pod_crash-seed42 scenario_id=email-pod_crash-seed42

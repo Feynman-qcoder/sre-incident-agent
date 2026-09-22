@@ -1,0 +1,102 @@
+{
+  "incident_id": "watchdog-OtelDemoHighClientErrorRate-d302b7b6",
+  "investigation_start_ts": "2026-09-18T10:34:04.206320+00:00",
+  "investigation_end_ts": "2026-09-18T10:34:31.924982+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "product-catalog sustained ~2.08 CPU cores (peak 2.33) versus 0.012-0.12 cores on every peer service, indicating severe CPU saturation on its pods. As the shared leaf dependency of frontend, checkout and recommendation, this resource starvation slows catalog lookups and propagates client-facing latency and errors upward to the frontend edge.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=2.078 cores, p95=2.310, p99=2.329, max=2.334",
+          "expected_baseline": "peer services ~0.012-0.12 cores (frontend=0.121, checkout=0.031, recommendation=0.012)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.038, p95=0.076, max=0.076 error rate",
+          "expected_baseline": "error_rate < 0.01; every peer service measured 0.000 in this window"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "90f0d1dc5c26d8bc",
+          "observed_value": "p95_duration=30750ms; user_get_recommendations span 15000ms (status ok), 0 of 20 traces with errors",
+          "expected_baseline": "frontend end-to-end p95 well under 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "0 restarts",
+          "expected_baseline": "rules out pod_crash/restart loop"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=35407872 bytes (~35.4MB), max=42274816 bytes (~42.3MB)",
+          "expected_baseline": "normal; rules out memory_stress/OOM"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "Catalog requests return with multi-second latency (15s spans) consistent with CPU-starvation-induced slowdown. Traces carry no error status, so the dominant observable on product-catalog itself is latency degradation rather than a hard abort.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "34b4cee0322e8bd0",
+          "observed_value": "user_browse_product span 15000ms (status ok); 0 errors, p95_duration=30750ms",
+          "expected_baseline": "product-catalog p95 well under 500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=2.078 cores (saturated)",
+          "expected_baseline": "< 0.15 cores"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend is the client-facing edge that aggregates responses from checkout, recommendation and product-catalog; it surfaces the propagated catalog slowness as elevated latency and a mild client error rate, but it is a victim rather than the origin.",
+      "confidence": 0.13,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "max=0.076 error rate",
+          "expected_baseline": "< 0.01"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "90f0d1dc5c26d8bc",
+          "observed_value": "p95_duration=30750ms",
+          "expected_baseline": "< 1000ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog pod resource requests/limits and per-container CPU breakdown to confirm whether the ~2.1-core saturation is a runaway thread/GC loop or genuine load.",
+    "Raise product-catalog CPU limits and/or horizontally scale the deployment (HPA) to absorb load and relieve downstream catalog call latency.",
+    "Add p99-latency alerting on product-catalog and its callers (frontend, checkout, recommendation) to catch CPU-driven slowness before client errors surface.",
+    "Verify no node-level autoscaling/quotas are capping product-catalog, since peers on the same node remain at <0.13 cores."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.7,
+  "latency_s": 27.718662,
+  "cost_usd": 0.00450415,
+  "total_prompt_tokens": 7601,
+  "total_completion_tokens": 1756,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,115 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-b699fe05",
+  "investigation_start_ts": "2026-09-17T14:31:59.139541+00:00",
+  "investigation_end_ts": "2026-09-17T14:32:36.425743+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "The shipping service exhibits an injected/abnormal processing latency: its server-span p99 jumped to ~9.2s (vs ~2ms baseline) with a wide p50/p95 spread, while its own downstream (quote) and all other dependencies stayed normal. The delay originates in shipping itself and propagates upstream to checkout and frontend.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=9168ms, p95=7640ms, mean=1912ms (p50=1.98ms) — anomaly window 14:31:55",
+          "expected_baseline": "p99 ~2ms (leaf services payment/cart/currency/quote all p99=1.98ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=1.98ms (normal) — shipping's only downstream is healthy, so latency is intrinsic to shipping",
+          "expected_baseline": "p99 ~2ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate max=0.010 (no error spike)",
+          "expected_baseline": "error_rate < 0.01 (p99 last 24h)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "cpu≈0.001 cores (flat, no cpu anomaly)",
+          "expected_baseline": "cpu ~0.001 cores (idle) — rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0 (no pod crash/backoff)",
+          "expected_baseline": "0 restarts — rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout shows the largest absolute latency (p99 ~9.6s, p50 elevated to ~1.95s) but this is explained by its synchronous call to the slow shipping dependency; checkout itself shows no error, cpu, memory, or restart anomaly. It is an upstream victim rather than the origin.",
+      "confidence": 0.12,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=9582ms, p95=8314ms, mean=2774ms (p50=1950ms)",
+          "expected_baseline": "p99 ~2ms (pre-incident)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.008, max=0.019 (no error spike)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu≈0.003 cores (flat)",
+          "expected_baseline": "cpu ~0.003 cores (no stress)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend latency is elevated (p99 ~7.9s) purely as propagation from checkout/shipping, which it calls synchronously. Its own downstream leaves (recommendation, ad, product-catalog, cart, currency) are all normal.",
+      "confidence": 0.06,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=7873ms, p95=6565ms, mean=1660ms (p50=24.8ms)",
+          "expected_baseline": "p99 ~25ms (pre-incident)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=4.97ms (normal)",
+          "expected_baseline": "p99 ~5ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "282da9a7a1a87383",
+          "observed_value": "user_checkout_single trace 9232ms, ok (0 errors) — long end-to-end checkout path",
+          "expected_baseline": "checkout traces < 100ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm a latency fault-injection / feature flag is active on the shipping service (check flagd and shipping deployment config for an injected delay) and disable it to restore baseline.",
+    "Roll back or restart the shipping Deployment/pods to clear any injected delay, then verify shipping server-span p99 returns to ~2ms.",
+    "If shipping latency is not a deliberate injection, profile the shipping container (blocking I/O, DNS, or downstream quote client timeouts) since quote server latency remains normal.",
+    "Add an SLO alert on shipping p99 and a circuit-breaker/timeout around checkout→shipping so checkout is not blocked by a slow shipping dependency.",
+    "Verify checkout and frontend p99 recover as a downstream effect once shipping is fixed."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.85,
+  "latency_s": 37.286202,
+  "cost_usd": 0.00554575,
+  "total_prompt_tokens": 9815,
+  "total_completion_tokens": 2010,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

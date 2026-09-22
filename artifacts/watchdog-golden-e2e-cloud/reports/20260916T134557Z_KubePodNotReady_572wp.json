@@ -1,0 +1,90 @@
+{
+  "incident_id": "watchdog-KubePodNotReady-195e11da",
+  "investigation_start_ts": "2026-09-16T13:44:06.603335+00:00",
+  "investigation_end_ts": "2026-09-16T13:45:57.549679+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed for a definition change ('Container checkout definition changed, will be restarted') and the pod cannot become ready because the sandbox pause image gcr.io/google-containers/pause:latest fails to pull (DeadlineExceeded -> ErrImagePull -> ImagePullBackOff). The pod is stuck NotReady, collapsing checkout traffic to near-zero with 100% of remaining requests erroring and no container logs being emitted.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=2)",
+          "observed_value": "checkout container killed and restart attempted 2 times in window",
+          "expected_baseline": "no Killing/restart events during steady-state operation"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff (count=3)",
+          "observed_value": "ImagePullBackOff x3, ErrImagePull x4, Back-off pulling image gcr.io/google-containers/pause:latest x3, DeadlineExceeded pull failures x4",
+          "expected_baseline": "pause image already cached/pullable; pod reaches Ready state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.001, max=0.002 cores at 13:42-13:44",
+          "expected_baseline": "cpu_usage > 0.1 cores under normal checkout load"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.038, max=0.057 req/s; error_rate identical (mean=0.038, max=0.057) = 100% of requests failing",
+          "expected_baseline": "request_rate several req/s with error_rate < 0.01"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"error\"",
+          "observed_value": "no logs found — container not running to emit logs",
+          "expected_baseline": "checkout emits logs continuously under normal operation"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "With checkout NotReady, upstream callers (frontend, accounting, fraud-detection per topology) experience dependency failures on checkout calls, explaining the 100% error rate on the residual checkout traffic.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.038, max=0.057 — equals total request rate exactly, all checkout calls failing",
+          "expected_baseline": "error_rate < 0.01 relative to request rate"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "http_abort",
+      "description": "Secondary interpretation: the residual checkout requests abort with errors, but the near-zero request rate, zero CPU, and absent logs indicate the pod is down rather than actively rejecting requests, making pod_crash the primary classification.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate max=0.057 with request_rate max=0.057 (all calls error)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Fix the image pull failure for gcr.io/google-containers/pause:latest: verify node egress/registry connectivity, configure imagePullSecrets or a registry mirror, or pre-pull/cache the pause image on the otel-demo worker nodes.",
+    "Review the checkout container definition change that triggered the 'Killing ... will be restarted' event; roll back the rollout (kubectl rollout undo deployment/checkout -n otel-demo) if the change is faulty.",
+    "Once the image pulls successfully, force a pod restart (kubectl rollout restart deployment/checkout -n otel-demo) and verify the pod reaches Ready with kubectl get pods -n otel-demo.",
+    "Monitor checkout request_rate/error_rate and CPU usage to confirm traffic recovery, and add a readiness gate/alert on ImagePullBackOff to catch this failure mode earlier."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.95,
+  "latency_s": 110.946344,
+  "cost_usd": 0.00355495,
+  "total_prompt_tokens": 4199,
+  "total_completion_tokens": 1986,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

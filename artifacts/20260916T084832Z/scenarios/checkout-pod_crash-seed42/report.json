@@ -1,0 +1,70 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-16T08:48:44.703275+00:00",
+  "investigation_end_ts": "2026-09-16T08:50:06.397607+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed and restarted during the incident window (Killing event: 'Container checkout definition changed, will be restarted', followed by Created/Started count=2). The pod additionally entered ImagePullBackOff on the pause image, leaving checkout effectively unavailable ¡ª its server request rate collapsed to ~0 and the memory working set dropped to a fresh-container baseline after the restart.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=1)",
+          "observed_value": "Container kill event for checkout pod during window; container Created (count=2) and Started (count=2) indicating restart",
+          "expected_baseline": "No Killing/restart events for checkout pod during steady-state operation"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=4); Failed: Error: ImagePullBackOff (count=4)",
+          "observed_value": "ImagePullBackOff on pause image with ErrImagePull (count=3) and DeadlineExceeded pull failures",
+          "expected_baseline": "Images already present / pullable; no BackOff events"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.018 req/s, p50=0.000, max=0.057 ¡ª checkout serving essentially no traffic",
+          "expected_baseline": "request_rate sustained at multiple req/s under normal load-generator traffic"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "anomaly window [1789544081.978¡ú1789544141.978], max=25333760 bytes then p50 drops to 548864 bytes ¡ª consistent with container restart resetting working set",
+          "expected_baseline": "Stable memory working set without abrupt drop to fresh-container baseline"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Frontend error rate was elevated (mean 0.063, max 0.171) because frontend depends on checkout (per topology: frontend ¡ú checkout), and checkout was unavailable due to the pod crash. This is downstream impact, not the originating fault.",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.063, p95=0.145, max=0.171 during window",
+          "expected_baseline": "error_rate < 0.01 under normal operation"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Investigate why the checkout container was killed ('definition changed, will be restarted') ¡ª audit recent Deployment/ConfigMap changes and roll back any breaking change to the checkout deployment",
+    "Fix the pause image pull failure: pre-pull gcr.io/google-containers/pause:latest on nodes or correct the image reference/registry access to clear the ImagePullBackOff blocking pod recovery",
+    "Verify the checkout pod is Running and Ready after restart, and confirm request_rate returns to baseline via the checkout calls_total metric",
+    "Add readiness/liveness probes and appropriate resource requests/limits to the checkout deployment so crashes are detected and recovered quickly",
+    "Monitor frontend error_rate until it falls back below 0.01, confirming the dependency failure has resolved"
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.6,
+  "latency_s": 81.694332,
+  "cost_usd": 0.0027919499999999996,
+  "total_prompt_tokens": 3822,
+  "total_completion_tokens": 1385,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

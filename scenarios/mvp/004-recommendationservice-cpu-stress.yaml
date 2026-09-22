@@ -1,0 +1,35 @@
+metadata:
+  scenario_id: recommendation-cpu_stress-seed42
+  fault_service: recommendation
+  fault_type: cpu_stress
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  # Stress saturates this host; snapshotting at peak load OOM-crashes Prometheus. Wait for the
+  # node to cool after recovery before firing the query burst (data is retained). See ADR-006.
+  snapshot_settle_s: 90
+  namespace: otel-demo
+  description: >
+    CPU stress on recommendation (2 workers @ 90% load). cpu_usage is pod-labelled (no
+    cascade) but load-generator is the steady-state CPU king, so the gate is self-relative
+    (ADR-006): culprit usage >=3x its own baseline AND top-3 absolute. NB: 4 workers crashed
+    Prometheus on this constrained host; keep the stressor moderate.
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: StressChaos
+  metadata:
+    name: recommendation-cpu-stress-seed42
+    namespace: chaos-mesh
+  spec:
+    mode: all
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: recommendation
+    stressors:
+      cpu:
+        workers: 2
+        load: 90
+    duration: "300s"

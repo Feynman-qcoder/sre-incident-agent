@@ -1,0 +1,133 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-c2dddb31",
+  "investigation_start_ts": "2026-09-17T10:57:24.914241+00:00",
+  "investigation_end_ts": "2026-09-17T11:00:12.745470+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend service exhibits a severe p99 latency spike (~9600-10000ms vs ~24ms p50 baseline) while every downstream dependency (checkout, cart, payment, product-catalog, recommendation, shipping, currency, ad) remains fast (p99 < 25ms). The bimodal distribution (p50=24ms, p99=9600ms) with zero errors, flat CPU/memory, no restarts, no pod events, and normal request rate (~1.8 req/s) indicates latency is introduced within the frontend itself, not propagated from a dependency or caused by resource exhaustion.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms=9600.969, max=10000.000, p50=24.018, anomaly detected at 1789642630.696",
+          "expected_baseline": "p99_latency_ms < 100ms (p50 baseline is 24.018ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=~\"frontend|cart|checkout|currency|email|payment|product-catalog|recommendation|shipping|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "frontend p99=9600.969ms (anomaly); checkout=24.850ms, product-catalog=16.480ms, recommendation=4.970ms, payment=4.968ms, shipping=4.788ms, ad=4.849ms, email=4.970ms, cart=1.980ms, currency=1.980ms, quote=1.980ms, flagd=1.996ms — all normal",
+          "expected_baseline": "all downstream services p99 < 25ms, confirming latency originates at frontend, not a dependency"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "9153d732a12644d8",
+          "observed_value": "user_checkout_multi trace, duration=15022ms, status ok (0 of 8 traces >5s had errors)",
+          "expected_baseline": "checkout journeys typically complete in < 1s end-to-end; downstream checkout service p99 is only 24.850ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "5ef152882a37196a",
+          "observed_value": "user_checkout_single trace, duration=15008ms, status ok",
+          "expected_baseline": "checkout journeys typically complete in < 1s end-to-end"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "281180d463e9c90b",
+          "observed_value": "user_checkout_single trace, duration=15010ms, status ok",
+          "expected_baseline": "checkout journeys typically complete in < 1s end-to-end"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=1.836, p50=1.857, max=2.143 req/s — no anomaly",
+          "expected_baseline": "request_rate ~1.8-2.1 req/s, ruling out traffic surge as cause"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"(frontend|cart|checkout|currency|email|payment|product-catalog|recommendation|shipping|ad|accounting|fraud-detection|quote|flagd)-.*\"}[2m])) by (pod)",
+          "observed_value": "frontend-76cbddfbcc-8cnrd cpu=0.011 cores, flat across window; all other pods < 0.013 cores",
+          "expected_baseline": "cpu_usage < 0.05 cores per pod, ruling out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"(frontend|cart|checkout|currency|email|payment|product-catalog|recommendation|shipping|ad|accounting|fraud-detection|quote|flagd)-.*\"}) by (pod)",
+          "observed_value": "frontend-76cbddfbcc-8cnrd memory=174880358.4 bytes (~175MB), flat across window",
+          "expected_baseline": "memory stable ~175MB, ruling out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"(frontend|cart|checkout|currency|email|payment|product-catalog|recommendation|shipping|ad|accounting|fraud-detection|quote|flagd)-.*\"}[5m])) by (pod) or vector(0)",
+          "observed_value": "restarts=0 for all pods including frontend-76cbddfbcc-8cnrd",
+          "expected_baseline": "0 restarts, ruling out pod_crash"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"frontend\"} |= \"error\"",
+          "observed_value": "[no logs found] — no error logs from frontend during the incident window",
+          "expected_baseline": "no error logs, ruling out http_abort / error-based faults"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events namespace=otel-demo pod_name_prefix=frontend since_seconds=600",
+          "observed_value": "[no K8s events found] — no OOMKilled, BackOff, or probe failures for frontend pods",
+          "expected_baseline": "no pod lifecycle events, ruling out pod-level failure"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The latency is concentrated in checkout user journeys (user_checkout_single/user_checkout_multi traces at ~15s), suggesting a latency fault specifically affecting the frontend's checkout-page request path (e.g., an injected delay or misconfigured feature flag/timeout on checkout-related handlers) rather than a uniform slowdown of all frontend endpoints.",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "9153d732a12644d8",
+          "observed_value": "user_checkout_multi=15022ms, status ok; all top slow traces are checkout journeys (also 5ef152882a37196a=15008ms, 281180d463e9c90b=15010ms), 0 errors",
+          "expected_baseline": "checkout journeys complete in < 1s; downstream checkout service p99 is only 24.850ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=24.018ms vs p99=9600.969ms — bimodal distribution indicating only a subset of requests (checkout flows) are slow",
+          "expected_baseline": "p50 and p99 within the same order of magnitude (< 100ms)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "flagd",
+      "fault_type": "http_abort",
+      "description": "flagd shows a small persistent error rate (mean 0.021, max 0.029) during the window; however, this is minor, stable, and uncorrelated with the shape of the frontend latency spike, so it is likely unrelated background noise rather than the root cause.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=~\"frontend|cart|checkout|currency|email|payment|product-catalog|recommendation|shipping|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"[2m])) by (service_name) or vector(0)",
+          "observed_value": "flagd error_rate mean=0.021, p50=0.019, p95=0.029, max=0.029; frontend error_rate=0.000; all other services 0.000",
+          "expected_baseline": "error_rate < 0.01; flagd's small stable error rate does not explain the frontend p99 latency anomaly"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the frontend deployment for recently injected latency faults or chaos experiments (e.g., artificial sleep/delay on checkout handlers) and remove/rollback the change; verify p99 returns to the ~24ms baseline.",
+    "Check flagd feature-flag configuration for any latency-inducing flags toggled on the frontend checkout path and disable them.",
+    "Review frontend code/config for blocking calls, missing timeouts, or retry storms on the checkout request path, since all downstream services (checkout p99=24.850ms) are healthy.",
+    "Add per-endpoint latency SLO alerts on the frontend (p99 > 1s for 2 minutes) to catch bimodal latency regressions earlier.",
+    "If a chaos experiment is active, terminate it and confirm recovery by re-querying histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.95,
+  "latency_s": 167.831229,
+  "cost_usd": 0.0073542,
+  "total_prompt_tokens": 9093,
+  "total_completion_tokens": 3973,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

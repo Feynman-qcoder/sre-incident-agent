@@ -1,0 +1,102 @@
+{
+  "incident_id": "frontend-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T09:30:05.207583+00:00",
+  "investigation_end_ts": "2026-09-18T09:30:33.545336+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog sits on the sole shared downstream path of the user-facing frontend (frontend→product-catalog, also used by checkout and recommendation per topology). Its degraded request handling pins the frontend server-span p99 to a hard 10s ceiling across the entire window, coupled with a strong CPU burn on the catalog pods (~1.93 cores vs ~0.015 cores on frontend pods), with no errors and no restarts — a classic injected latency/CPU-saturation signature on the shared hot path.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=p95=p99=max=10000.0 ms constant across the whole incident window",
+          "expected_baseline": "frontend server-span p99 well under ~1000 ms; a flat 10s ceiling indicates a saturated downstream dependency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=1.934 cores, p95=2.192, p99=2.231, max=2.240 cores",
+          "expected_baseline": "~0.015 cores observed on frontend pods — catalog pods burn ~130x more CPU, indicating saturation on the shared catalog path"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 for the whole window",
+          "expected_baseline": "error_rate < 0.01 — confirms a latency/saturation fault rather than an error abort"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"product-catalog\"} |= \"error\"",
+          "observed_value": "no logs found (no application errors emitted by catalog)",
+          "expected_baseline": "no error logs — consistent with pure latency/saturation degradation"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "The single most anomalous raw resource signal is the catalog pods' CPU: ~1.934 cores sustained versus ~0.015 cores for frontend pods. If the injection is a CPU-stress fault on product-catalog, the CPU burn would throttle request handling and produce the 10s frontend p99 ceiling as a secondary symptom.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=1.934 cores, max=2.240 cores sustained",
+          "expected_baseline": "frontend pods ~0.015 cores; catalog is ~130x hotter than peer pods"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.015 cores (p99=0.017) — frontend itself is idle in CPU terms",
+          "expected_baseline": "frontend not CPU-bound, so its 10s latency originates downstream"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "0 restarts across the window",
+          "expected_baseline": "0 — rules out pod_crash/OOM as the mechanism"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "frontend is the user-facing victim: its server-span p99 is pinned at the 10s ceiling, but it is an aggregator with negligible CPU, so the latency is inherited from its product-catalog dependency rather than generated locally.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000 ms for the entire window",
+          "expected_baseline": "sub-second p99 in healthy state"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=frontend, min_duration_ms=9000)",
+          "observed_value": "no traces found in window (trace backend returned no long-trace samples)",
+          "expected_baseline": "when healthy, frontend traces complete well under 9s"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog pods for injected chaos (latency/stress sidecars, pod annotations, events) and confirm the ~1.93-core CPU burn via `kubectl top pod -n otel-demo`; remove the injected fault once identified.",
+    "Verify product-catalog CPU requests/limits and check for cgroup CPU throttling; if the saturation is organic, raise limits or scale replicas, since product-catalog is the shared hot path for frontend, checkout and recommendation.",
+    "Add/adjust client-side timeouts and circuit breakers between frontend and product-catalog so a single degraded leaf cannot pin the whole frontend p99 to the 10s ceiling.",
+    "Re-measure frontend and product-catalog p99 latency after remediation to confirm the 10s ceiling is lifted and catalog CPU returns to baseline."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 28.337753,
+  "cost_usd": 0.0019984499999999997,
+  "total_prompt_tokens": 5499,
+  "total_completion_tokens": 1956,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

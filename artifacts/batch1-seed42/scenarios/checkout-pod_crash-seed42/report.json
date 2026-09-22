@@ -1,0 +1,90 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T09:16:14.608941+00:00",
+  "investigation_end_ts": "2026-09-18T09:16:33.780206+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed by a deployment spec change ('Container checkout definition changed, will be restarted') and its replacement pod cannot start because the sandbox image gcr.io/google-containers/pause:latest fails to pull (DeadlineExceeded → ImagePullBackOff), leaving checkout NotReady and unable to serve traffic. This is the direct cause of the checkout request-rate collapse.",
+      "confidence": 0.87,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+          "observed_value": "count=1 in 600s window (checkout pod)",
+          "expected_baseline": "no container kill/restart events"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff",
+          "observed_value": "count=4; preceded by 'Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded' and ErrImagePull",
+          "expected_baseline": "0 image pull failures; pause image present on node"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a",
+          "observed_value": "count=2 (plus count=1 variant) image pull DeadlineExceeded",
+          "expected_baseline": "pause image pull succeeds on pod sandbox creation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.018 req/s, max=0.057 req/s",
+          "expected_baseline": "healthy checkout server request_rate >= ~0.5 req/s"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (checkout server span producing no responses)",
+          "expected_baseline": "error_rate < 0.01; a serving pod would emit non-zero request/response spans"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "memory_stress",
+      "description": "checkout memory working set showed an anomalous excursion during the window (max 25.3 MB vs baseline p50 0.5 MB), consistent with a container being torn down/restarted rather than a sustained memory-pressure fault.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "mean=5,323,708 bytes, p50=548,864, max=25,333,760; anomaly flagged in window",
+          "expected_baseline": "steady ~0.5 MB working set for a healthy checkout container"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "frontend calls checkout directly, so if checkout is unavailable the frontend would surface downstream failures; however this is propagation from the checkout outage, not an independent fault, as checkout serves zero traffic.",
+      "confidence": 0.12,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "frontend → checkout",
+          "observed_value": "frontend → checkout dependency edge present in service topology",
+          "expected_baseline": "n/a"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Roll back the checkout Deployment to the previous working container definition — the event 'Container checkout definition changed, will be restarted' shows a recent spec change triggered the kill.",
+    "Fix the sandbox image pull failure: the pull of gcr.io/google-containers/pause:latest fails with DeadlineExceeded — verify registry connectivity/DNS, use an accessible mirror or pre-seed the pause image on the node, or set imagePullPolicy: IfNotPresent.",
+    "Confirm the replacement checkout pod reaches Ready (no ImagePullBackOff) and verify checkout server request_rate returns to baseline.",
+    "Add a preflight/sync step to ensure the pause sandbox image is cached on nodes to avoid future ImagePullBackOff on pod recreation."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.4286,
+  "latency_s": 19.171265,
+  "cost_usd": 0.0015592499999999999,
+  "total_prompt_tokens": 5651,
+  "total_completion_tokens": 1186,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

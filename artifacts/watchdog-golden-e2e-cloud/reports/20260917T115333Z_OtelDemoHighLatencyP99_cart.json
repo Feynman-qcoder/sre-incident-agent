@@ -1,0 +1,104 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-b47b613b",
+  "investigation_start_ts": "2026-09-17T11:48:41.630875+00:00",
+  "investigation_end_ts": "2026-09-17T11:53:33.158076+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "pod_crash",
+      "description": "The cart pod (cart-69bd7c567b-5ccmp) was killed and restarted during the incident window — it is the only pod in the namespace with a restart (counter increase max=1.108) and its container shows Created/Started count=2. The restart caused cart server p99 latency to spike to ~52ms (vs ~2ms baseline, ~25x), propagating upstream to frontend and checkout (p99 ~48ms each), which triggered the high-latency-p99 watchdog.",
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*|cart-.*|checkout-.*|currency-.*|email-.*|payment-.*|product-catalog-.*|recommendation-.*|shipping-.*|ad-.*|accounting-.*|fraud-detection-.*|quote-.*|flagd-.*\"}[5m])) by (pod) or vector(0)",
+          "observed_value": "cart-69bd7c567b-5ccmp restarts max=1.108 during window; all other pods = 0.000",
+          "expected_baseline": "restarts increase = 0 for all services"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Created: Container created (count=2); Started: Container started (count=2); Pulled: Container image \"ghcr.io/open-telemetry/demo:3.0.0-cart\" already present on machine and can be accessed by the pod (count=1)",
+          "observed_value": "cart container recreated/restarted twice (Created count=2, Started count=2); no OOMKilled or BackOff events observed",
+          "expected_baseline": "single container creation, no restart events"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=~\"frontend|cart|checkout|currency|email|payment|product-catalog|recommendation|shipping|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "cart p99=51.703ms, max=53.660ms, anomaly detected at 1789645720.696; frontend p99=48.485ms; checkout p99=48.000ms",
+          "expected_baseline": "cart p99 ~1.98ms (consistent with other leaf services: currency, payment, shipping, quote all p99=1.980ms)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "4a78dc1cc3cb660d",
+          "observed_value": "order-consumed trace involving cart, duration 34379ms, status ok (no errors)",
+          "expected_baseline": "cart traces typically <60ms (e.g. 6fcf5614241ff441 = 60ms, ed1d43a37de7c15b = 60ms)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "cart",
+      "fault_type": "high_latency",
+      "description": "Alternative hypothesis: cart itself experienced intrinsic high latency (the only service flagged with a latency anomaly in the sweep), e.g. slow storage/serialization, which may have caused health-check failures leading to the container restart. Error rates were ~0 across all services, ruling out http_abort.",
+      "confidence": 0.45,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=~\"frontend|cart|checkout|currency|email|payment|product-catalog|recommendation|shipping|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "cart p99=51.703ms with anomaly flagged; all other leaf services (currency, payment, shipping, quote) p99=1.980ms",
+          "expected_baseline": "cart p99 ~2ms consistent with other leaf services"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=~\"frontend|cart|checkout|currency|email|payment|product-catalog|recommendation|shipping|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) by (service_name) or vector(0)",
+          "observed_value": "cart error_rate=0.000; max across all services 0.019 (flagd only)",
+          "expected_baseline": "error_rate < 0.01 — no error spike, ruling out http_abort"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "cart request_rate mean=0.650, max=0.781 — traffic remained present, no total outage",
+          "expected_baseline": "steady request rate ~0.6 req/s"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "Cart memory working set rose from ~82MB to ~104MB (+27%) and CPU rose to 0.072 cores (~4x its p50, highest in the cluster) during the window, indicating resource pressure that could have contributed to the container restart; however no OOMKilled event was observed, so this is a secondary contributor at best.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"frontend-.*|cart-.*|checkout-.*|currency-.*|email-.*|payment-.*|product-catalog-.*|recommendation-.*|shipping-.*|ad-.*|accounting-.*|fraud-detection-.*|quote-.*|flagd-.*\"}) by (pod)",
+          "observed_value": "cart-69bd7c567b-5ccmp max=104415232 bytes (~104MB) vs p50=82157568 bytes (~82MB)",
+          "expected_baseline": "stable working set ~82MB (flat for all other pods)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*|cart-.*|checkout-.*|currency-.*|email-.*|payment-.*|product-catalog-.*|recommendation-.*|shipping-.*|ad-.*|accounting-.*|fraud-detection-.*|quote-.*|flagd-.*\"}[2m])) by (pod)",
+          "observed_value": "cart-69bd7c567b-5ccmp max=0.072 cores vs p50=0.017; all other pods <= 0.013",
+          "expected_baseline": "cart CPU ~0.017 cores, in line with other services"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Determine the cart container termination reason: kubectl describe pod cart-69bd7c567b-5ccmp -n otel-demo and inspect lastState/exit code to distinguish an external kill from OOM or liveness-probe failure.",
+    "Scale cart to at least 2 replicas with pod anti-affinity so a single pod restart does not remove all cart capacity and spike p99 for frontend and checkout.",
+    "Add/tune readiness probes and preStop connection draining on cart so in-flight and queued requests are not stalled during restarts.",
+    "Set explicit CPU/memory requests and limits for cart (memory rose ~27% to ~104MB) and consider an HPA to absorb load spikes.",
+    "Add retry-with-backoff and circuit breaking in frontend and checkout for cart calls to bound p99 latency during pod churn.",
+    "Verify flagd feature-flag/chaos-injection configuration to rule out an intentional cart fault being toggled on during the window."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 291.527201,
+  "cost_usd": 0.0064337000000000005,
+  "total_prompt_tokens": 8902,
+  "total_completion_tokens": 3160,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

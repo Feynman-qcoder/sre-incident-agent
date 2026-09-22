@@ -1,0 +1,101 @@
+{
+  "incident_id": "shipping-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T09:24:28.587751+00:00",
+  "investigation_end_ts": "2026-09-18T09:24:49.190825+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "The shipping service exhibits a severe server-side latency anomaly (server-span p99 mean ~5700ms, peaking at ~9650ms vs a ~2ms baseline) while its error rate, CPU usage and pod restarts all remain normal. Its only downstream dependency (quote) stays healthy at ~1.98ms, isolating the injected/abnormal delay to shipping itself, which then propagates upstream to frontend and checkout.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 mean=5700.15ms p50=4952.5ms p95=9510ms p99=9622ms max=9650ms",
+          "expected_baseline": "shipping server p99 ~2ms (healthy)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=1.980ms (flat, normal)",
+          "expected_baseline": "quote p99 ~2ms — downstream dependency healthy, excluding dependency_failure"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 mean=4951.9ms p50=7357.1ms p95=7869.4ms max=8133.3ms",
+          "expected_baseline": "frontend p99 ~tens of ms (healthy) — upstream propagation of shipping latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.004 max=0.012",
+          "expected_baseline": "error_rate < 0.01 — no error spike, excludes http_abort"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "cpu_usage ~0.002 (flat)",
+          "expected_baseline": "normal CPU usage — excludes cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0",
+          "expected_baseline": "0 restarts — excludes pod_crash"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events pod_name_prefix=shipping (Successfully update ObservedGeneration and FailedMessage of resource)",
+          "observed_value": "no OOMKilled/BackOff/CrashLoop/restart events for shipping pods",
+          "expected_baseline": "no crash/kill events — excludes pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend server-span p99 is elevated (~8.1s max) as a consequence of calling the degraded shipping service; it is a propagated symptom rather than the origin, since shipping shows the largest absolute p99 deviation and frontend depends on shipping in the checkout path.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 mean=4951.9ms max=8133.3ms",
+          "expected_baseline": "frontend p99 ~tens of ms (healthy)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout depends on shipping (topology: checkout → shipping, quote) and would inherit elevated latency, but the primary origin remains the shipping service itself which shows the largest p99 deviation while its own downstream quote stays at ~1.98ms.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "shipping p99 mean=5700ms max=9650ms (origin) while quote p99=1.980ms (healthy)",
+          "expected_baseline": "shipping ~2ms / quote ~2ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect flagd configuration and the shipping Deployment for an active latency fault-injection / delay flag and disable or roll back it.",
+    "Restart the shipping Deployment/pods to clear any injected in-process delay, then verify shipping server-span p99 returns to ~2ms.",
+    "Validate recovery by confirming frontend/checkout server-span p99 returns to healthy baselines and that shipping error rate and pod restarts remain at zero."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.8889,
+  "latency_s": 20.603074,
+  "cost_usd": 0.0017697,
+  "total_prompt_tokens": 5382,
+  "total_completion_tokens": 1604,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

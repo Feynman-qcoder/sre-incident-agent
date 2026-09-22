@@ -1,0 +1,60 @@
+{
+  "incident_id": "recommendation-cpu_stress-seed42",
+  "investigation_start_ts": "2026-09-16T09:16:17.310152+00:00",
+  "investigation_end_ts": "2026-09-16T09:26:22.691584+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "cpu_stress",
+      "description": "The recommendation pod exhibits a severe CPU stress condition: container CPU usage climbed to ~3.6 cores (mean 2.34 cores) during the incident window, far above the sub-core baseline typical for this service. All other fault signals are clean (error rate 0.0, zero pod restarts, stable ~105-109MB memory, p99 latency ~24ms), isolating the root cause to abnormal CPU consumption inside the recommendation container rather than crashes, memory pressure, or downstream dependency failures.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=2.343, p50=2.910, p95=3.604, p99=3.607, max=3.608 cores during 07:56:38-08:03:38 window",
+          "expected_baseline": "cpu_usage < 0.5 cores for recommendation service under normal load"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across entire window (mean/p50/p95/p99/max all 0.0)",
+          "expected_baseline": "error_rate < 0.01; zero errors rules out http_abort"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0.0 across entire window",
+          "expected_baseline": "pod_restarts=0; zero restarts rules out pod_crash/OOMKill"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "memory_usage mean=105861666 bytes (~101MB), max=108965888 bytes (~104MB), flat throughout window",
+          "expected_baseline": "stable ~100MB working set; no growth trend rules out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency mean=19.123ms, max=24.000ms",
+          "expected_baseline": "p99 < 100ms; normal latency rules out high_latency and dependency_failure on product-catalog"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect processes inside the recommendation pod (kubectl exec -n otel-demo <recommendation-pod> -- top) to identify and kill the CPU-stress/rogue process consuming ~3.6 cores",
+    "Restart the recommendation deployment (kubectl rollout restart deployment/recommendation -n otel-demo) to clear the stress condition if a rogue process is confirmed",
+    "Verify and enforce CPU resource limits/requests on the recommendation container and consider horizontal autoscaling to absorb abnormal CPU load",
+    "Add a Prometheus alert on sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m])) > 1.0 for early detection of CPU stress recurrence"
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 1.0,
+  "latency_s": 605.381432,
+  "cost_usd": 0.0036771,
+  "total_prompt_tokens": 2676,
+  "total_completion_tokens": 2610,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,97 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-c2dddb31",
+  "investigation_start_ts": "2026-09-17T14:18:23.405369+00:00",
+  "investigation_end_ts": "2026-09-17T14:19:29.626195+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog, a leaf service with no downstream dependencies, shows an intrinsic ~1000x increase in server-side p99 latency (baseline ~10ms -> ~10s) with zero errors and no CPU, memory, or restart changes. Every other high-latency service (frontend, recommendation, checkout) calls product-catalog, so their latency is propagated from it.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "incident window 14:05:55-14:17:02: mean=5657.676ms, p50=10000.000ms, p95=10000.000ms, p99=10000.000ms, max=10000.000ms",
+          "expected_baseline": "pre-incident 13:45-14:06: mean=10.909ms, p50=9.493ms, p95=16.641ms, p99=17.327ms, max=17.500ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.010 cores, p50=0.010, p95=0.011, p99=0.011, max=0.011 (flat, no anomaly)",
+          "expected_baseline": "steady-state ~0.01 cores - rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=23919215.304 bytes (~23.9MB), p50=23891968, max=24322048 (flat, no anomaly)",
+          "expected_baseline": "steady-state ~24MB - rules out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "0.000 restarts throughout the window (mean/p50/p95/p99/max all 0)",
+          "expected_baseline": "0 restarts - rules out pod_crash"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 error rate throughout the window",
+          "expected_baseline": "0 errors - excludes http_abort/error injection"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "recommendation's server p99 latency rose from a flat 4.97ms to ~4,970ms during the window. Because recommendation depends on product-catalog (topology: recommendation -> product-catalog), this is most consistent with downstream propagation rather than an intrinsic fault.",
+      "confidence": 0.12,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "incident window: mean=4937.378ms, p50=4970.000ms, p95=10000.000ms, p99=10000.000ms, max=10000.000ms",
+          "expected_baseline": "pre-incident 13:45-14:06: mean=4.970ms, p50=p95=p99=max=4.970ms (constant)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "frontend is the user-facing aggregator that depends directly on product-catalog (and on recommendation/checkout which also call it). Its p99 latency rose from ~40ms to ~5,661ms during the window, consistent with aggregation of propagated product-catalog latency rather than a primary fault.",
+      "confidence": 0.06,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "incident window: mean=5661.734ms, p50=10000.000ms, p95=10000.000ms, p99=10000.000ms, max=10000.000ms",
+          "expected_baseline": "pre-incident 13:45-14:06: mean=40.499ms, p50=33.615ms, p95=119.872ms, p99=146.515ms, max=152.500ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "163167d090e59c23",
+          "observed_value": "frontend search_traces (service_name=frontend, min_duration_ms=5000): p95_duration=661200ms, 0 errors; top operation user_get_recommendations=16602ms",
+          "expected_baseline": "frontend p95 duration in low tens of ms pre-incident"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the product-catalog deployment for an injected latency fault or slow code path, since its SERVER span p99 jumped ~1000x to ~10s at 14:05:55 while CPU, memory, restarts and error rate stayed normal.",
+    "Check product-catalog for thread/connection starvation or artificially delayed handlers (e.g. chaos or flagd latency injection targeting product-catalog) and roll back the causing change.",
+    "Restart/roll the product-catalog pods to clear the condition and verify p99 returns to ~10ms.",
+    "Confirm recovery propagates: recommendation, checkout and frontend p99 should fall back toward ~5ms / ~25ms / ~40ms respectively.",
+    "Add a p99 latency SLO alert on product-catalog server spans (leaf dependency), since it acts as a single latency-amplification point for frontend, recommendation and checkout."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.8,
+  "latency_s": 66.220826,
+  "cost_usd": 0.00574875,
+  "total_prompt_tokens": 9591,
+  "total_completion_tokens": 2278,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

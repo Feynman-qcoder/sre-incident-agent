@@ -1,0 +1,45 @@
+{
+ "ts": "2026-09-16T16:02:02.046957+00:00",
+ "p99_now_ms": {
+  "flagd": "1.9972173913043478",
+  "frontend": "NaN",
+  "image-provider": "NaN",
+  "cart": "NaN",
+  "ad": "NaN",
+  "product-catalog": "NaN",
+  "frontend-proxy": "9906.172839506173",
+  "currency": "NaN",
+  "recommendation": "NaN",
+  "checkout": "NaN"
+ },
+ "p99_ref_ms": {
+  "recommendation": "NaN",
+  "ad": "NaN",
+  "product-catalog": "NaN",
+  "flagd": "1.9990384615384615",
+  "frontend": "NaN",
+  "currency": "NaN",
+  "image-provider": "NaN",
+  "cart": "NaN",
+  "checkout": "NaN",
+  "frontend-proxy": "9907.291666666668"
+ },
+ "ratio": {
+  "currency": "NaN",
+  "cart": "NaN",
+  "recommendation": "NaN",
+  "ad": "NaN",
+  "product-catalog": "NaN",
+  "flagd": "0.9990890269151139",
+  "frontend-proxy": "0.9998870703318183",
+  "frontend": "NaN",
+  "image-provider": "NaN",
+  "checkout": "NaN"
+ },
+ "error_ratio": {
+  "flagd": "0.008620689655172414",
+  "frontend": "NaN",
+  "frontend-proxy": "1",
+  "checkout": "NaN"
+ }
+}

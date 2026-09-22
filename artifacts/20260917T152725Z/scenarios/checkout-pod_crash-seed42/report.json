@@ -1,0 +1,84 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-17T15:27:33.032864+00:00",
+  "investigation_end_ts": "2026-09-17T15:27:59.924530+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout pod's container was killed and restarted during the incident window, dropping the checkout service's inbound server request rate to zero while the container churned.",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=1)",
+          "observed_value": "container 'checkout' killed for restart (count=1); Started/Created events count=2",
+          "expected_baseline": "no container kill/restart events for checkout during steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "p50=0.000, mean=0.018, max=0.057 req/s (traffic collapses to zero)",
+          "expected_baseline": "steady inbound server request rate well above 0"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "p50=548864 B, max=25333760 B; anomaly 1789544081→1789544141 (07:34:41→07:35:41 UTC)",
+          "expected_baseline": "p50 ≈ 0.5 MB steady working set"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "memory_stress",
+      "description": "Checkout pod working-set memory spiked roughly 50x above baseline at the start of the window, a plausible trigger for an OOM-kill and container restart.",
+      "confidence": 0.18,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "p95=24430592 B and max=25333760 B vs p50=548864 B",
+          "expected_baseline": "p50 ≈ 0.5 MB (pre-incident working set)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "unknown",
+      "description": "Kubernetes events also show the pod sandbox (pause container) repeatedly failing image pulls (ErrImagePull/ImagePullBackOff), which can independently drive pod churn and restart loops on the checkout pod.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff (count=4)",
+          "observed_value": "pause container image pull failures / BackOff (count=4)",
+          "expected_baseline": "no image pull failures in steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=4)",
+          "observed_value": "back-off pulling pause image (count=4)",
+          "expected_baseline": "pause sandbox image available, no back-off"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Roll-restart the checkout deployment to clear the crashed/restarting container: kubectl -n otel-demo rollout restart deployment/checkout",
+    "Inspect checkout container memory limits/requests alongside the observed working-set spike; raise limits or fix the leak so the container stops being killed and restarted",
+    "Resolve the pause-container image pull failures (ErrImagePull/ImagePullBackOff) so the pod sandbox can be created reliably and restart loops cease",
+    "Verify recovery by confirming checkout server request_rate returns to baseline and no further Killing/Started events appear in get_pod_events"
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.5,
+  "latency_s": 26.891666,
+  "cost_usd": 0.0032823,
+  "total_prompt_tokens": 4809,
+  "total_completion_tokens": 1523,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

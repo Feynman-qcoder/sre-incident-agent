@@ -1,0 +1,96 @@
+{
+  "incident_id": "watchdog-OtelDemoHighClientErrorRate-2f18fc07",
+  "investigation_start_ts": "2026-09-18T09:04:23.272899+00:00",
+  "investigation_end_ts": "2026-09-18T09:05:13.745841+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "http_abort",
+      "description": "An HTTP-boundary abort on the product-catalog leaf (called by recommendation and frontend) prevents its requests from completing normally, so callers block until the 10s deadline and client-facing requests error out. product-catalog itself emits no completed/errored server span, so its own error and latency metrics remain normal — the classic abort-at-HTTP-boundary signature.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 and no completed server spans for product-catalog during the window",
+          "expected_baseline": "product-catalog normally emits a steady stream of successful server spans; an aborted HTTP boundary produces no completed/errored span"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "recommendation p99=10000 ms flat at the 10s deadline throughout the window",
+          "expected_baseline": "recommendation server p99 well below 1s; a flat 10s indicates the caller is blocking on an unresponsive downstream (product-catalog)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum by (service_name) (rate(calls_total{span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m]))",
+          "observed_value": "frontend-proxy error_rate=0.224, flagd=0.010, frontend=0.007, checkout=0.000, cart/payment=0.000",
+          "expected_baseline": "frontend-proxy client/server error rate near 0; 0.224 is the dominant error signal for this incident"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=frontend, error_only=True)",
+          "observed_value": "20 traces, p95_duration=45012ms; user_browse_product=15001ms (f191382541ba99ac), user_browse_product=15000ms (647fd199d903cd5b), user_get_recommendations=15000ms (c03194e8489a377a)",
+          "expected_baseline": "browse/recommendation traces normally complete in tens of ms; 15s durations reflect blocked downstream calls"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "recommendation's server p99 sits flat at 10000 ms across the entire window, indicating its calls (or its dependency product-catalog) stall to the 10s deadline. Could itself be the injected latency service rather than merely a victim of product-catalog.",
+      "confidence": 0.28,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=10000 ms, p50=10000, p95=10000, p99=10000, max=10000 (constant 10s)",
+          "expected_baseline": "recommendation server p99 should be sub-second"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=frontend, error_only=True)",
+          "observed_value": "user_get_recommendations trace c03194e8489a377a duration=15000ms; p95=45012ms",
+          "expected_baseline": "recommendation-dependent browse traces expected in tens of ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "The outer frontend/frontend-proxy tier shows the highest observable error rate (0.224), consistent with upstream requests failing/timing out because a downstream (product-catalog/recommendation) never returns. Alternative if the abort was injected at the frontend edge rather than the catalog leaf.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum by (service_name) (rate(calls_total{span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m]))",
+          "observed_value": "frontend-proxy error_rate=0.224, frontend error_rate=0.007 (max 0.019)",
+          "expected_baseline": "expected near-zero client/server error rate at the edge"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"frontend-proxy\"} |= \"error\"",
+          "observed_value": "no logs found in window",
+          "expected_baseline": "frontend-proxy error logs expected if the edge itself were faulting; absence weakens this hypothesis"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable/roll back the http_abort fault injection on product-catalog (the flagd flag controlling the product-catalog HTTP abort) to restore normal responses.",
+    "Restart the product-catalog deployment pods to clear any stuck/aborted connection state.",
+    "Verify recommendation server p99 latency returns below ~1s and frontend-proxy error rate drops back toward 0 after the rollback.",
+    "If metrics do not recover, re-check recommendation and frontend for the injected latency/abort fault in the same window."
+  ],
+  "fault_type_classification": "http_abort",
+  "grounding_score": 0.55,
+  "latency_s": 50.472942,
+  "cost_usd": 0.00445165,
+  "total_prompt_tokens": 7748,
+  "total_completion_tokens": 1657,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

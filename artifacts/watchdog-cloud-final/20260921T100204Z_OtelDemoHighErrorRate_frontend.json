@@ -1,0 +1,90 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-549ee968",
+  "investigation_start_ts": "2026-09-21T09:55:36.443232+00:00",
+  "investigation_end_ts": "2026-09-21T10:02:04.151221+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend edge service exhibits an anomalous p99 latency spike (up to ~7.0s, approaching the request timeout ceiling) during the window, causing frontend server requests to stall until they time out and abort, which produces the elevated frontend error rate. All downstream dependencies remain healthy, localizing the fault to the frontend edge.",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=5813.8ms, max=7014.3ms (mean=231.3ms, p50=24.0ms); anomaly window 09:23:25–09:23:55Z",
+          "expected_baseline": "frontend p99 well under ~500ms; p50 ≈ 24ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "0.000 restarts throughout window",
+          "expected_baseline": "0 restarts (rules out pod_crash)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.023 cores (p95=0.028), no anomaly detected",
+          "expected_baseline": "flat ~0.02 cores (rules out cpu_stress)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "The frontend is the only service in the namespace with a non-zero server error rate, sustained and flat across the entire window, a signature consistent with an HTTP abort fault injected at the frontend edge.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=1.235 errors/s (p50=1.267, p95=1.638, max=1.733) sustained across window",
+          "expected_baseline": "0.000 errors/s — all other queried services measured 0.000"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 errors/s for checkout (and payment, cart, product-catalog, recommendation)",
+          "expected_baseline": "0.000 errors/s — confirms error source is the frontend edge, not a downstream dependency"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "unknown",
+      "description": "Errors are localized to the frontend edge, but span-level error traces and error logs are absent, so the precise injected fault mechanism cannot be fully confirmed from traces/logs alone.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name='frontend', error_only=True, window=2026-09-21T09:21:25Z–2026-09-21T09:55:00Z)",
+          "observed_value": "20 traces, 0 with errors, p95_duration=18ms",
+          "expected_baseline": "error traces expected if span-level failures occurred"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"frontend\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "error log lines expected during an error-rate incident"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Capture and inspect frontend request traces/logs at the edge for the specific handler or downstream call stalling to the ~7–10s timeout during the 09:23 window.",
+    "Review flagd/feature-flag configuration affecting frontend latency or abort injection and disable the faulty flag if present.",
+    "Verify frontend timeout/retry/deadline settings and consider adding capacity or request hedging so slow requests fail fast rather than stalling to timeout.",
+    "Add continuous alerting on frontend server error_rate and p99 latency, and confirm downstream services (checkout, cart, payment, product-catalog, recommendation) remain at zero errors to keep the fault localized."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.7,
+  "latency_s": 387.707989,
+  "cost_usd": 0.0037701999999999996,
+  "total_prompt_tokens": 6023,
+  "total_completion_tokens": 1583,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

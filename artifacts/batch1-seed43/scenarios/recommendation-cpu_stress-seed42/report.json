@@ -1,0 +1,90 @@
+{
+  "incident_id": "recommendation-cpu_stress-seed42",
+  "investigation_start_ts": "2026-09-18T09:23:55.555925+00:00",
+  "investigation_end_ts": "2026-09-18T09:24:08.935283+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "cpu_stress",
+      "description": "The recommendation service pod consumes an anomalous amount of CPU during the incident window (mean 2.343 cores, p95/p99 ~3.60, peak 3.608), ~33x higher than frontend (0.070) and ~94x higher than product-catalog (0.025). Error rate, memory usage and pod restarts remain at baseline, which is the exact signature of an injected CPU-stress fault rather than a crash, latency, memory or dependency failure.",
+      "confidence": 0.93,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "mean=2.343 cores, p50=2.910, p95=3.604, p99=3.607, max=3.608",
+          "expected_baseline": "~0.03-0.07 cores (frontend 0.070, product-catalog 0.025, checkout 0.003)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (flat at zero across the window)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000 (no restart activity)",
+          "expected_baseline": "0 restarts in steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "mean=105861666 bytes (~106 MB), p50=108945408, max=108965888",
+          "expected_baseline": "stable ~106 MB (no memory growth / no pressure)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "unknown",
+      "description": "Frontend is a direct upstream caller of recommendation (frontend -> recommendation in the topology), so if the recommendation CPU saturation degrades recommendation response quality, frontend latency could rise as a secondary effect. No frontend error or resource anomaly was observed in this session, so this remains a weak secondary hypothesis.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.070 cores, p95=0.073, max=0.073 (normal)",
+          "expected_baseline": "~0.07 cores steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "mean=2.343 cores vs frontend 0.070 cores",
+          "expected_baseline": "~0.03-0.07 cores"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "product-catalog",
+      "fault_type": "unknown",
+      "description": "Product-catalog is the downstream dependency of recommendation (recommendation -> product-catalog). If recommendation's CPU stress caused timeouts or request failures toward product-catalog, downstream symptoms could appear there, but product-catalog CPU is at baseline (0.025) and no error/restart signal was seen, so this is unlikely.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.025 cores, max=0.028 (normal)",
+          "expected_baseline": "~0.025 cores steady state"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm the CPU saturation source on the recommendation pod: kubectl top pods -n otel-demo and inspect for a stress-ng / busy-loop sidecar or injected fault marked seed42.",
+    "If the fault is injected, stop/disable the CPU-stress experiment targeting the recommendation service (remove the chaos/fault injection).",
+    "Verify recommendation CPU usage returns to baseline (~0.03-0.07 cores) after the fault is removed and confirm frontend request latency/quality normalizes (frontend depends on recommendation).",
+    "Add a CPU-usage alert on the recommendation deployment to catch similar sustained, error-free CPU saturation in the future."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 1.0,
+  "latency_s": 13.379358,
+  "cost_usd": 0.0015165,
+  "total_prompt_tokens": 4330,
+  "total_completion_tokens": 1445,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

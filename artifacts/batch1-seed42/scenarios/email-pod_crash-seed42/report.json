@@ -1,0 +1,84 @@
+{
+  "incident_id": "email-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T09:18:41.770175+00:00",
+  "investigation_end_ts": "2026-09-18T09:19:03.329384+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "email",
+      "fault_type": "pod_crash",
+      "description": "The email deployment's container is repeatedly restarting in a crash loop. Kubernetes reported repeated container restarts ('Container email definition changed, will be restarted') and a back-off restarting the failing email container, confirming a pod_crash fault localized to email, a leaf service downstream of checkout.",
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off restarting failed container email in pod email-7699887dd9-rnbxw_otel-demo(c9cf2589-71fd-45ed-bb7c-39ada7acd0a9) (count=5)",
+          "observed_value": "count=5 back-off restarts of container email in the window",
+          "expected_baseline": "0 restart back-offs for a healthy service"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container email definition changed, will be restarted (count=2)",
+          "observed_value": "count=2 container kills/restarts of email",
+          "expected_baseline": "no container kills during steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Started: Container started (count=3)",
+          "observed_value": "count=3 container (re)starts for email",
+          "expected_baseline": "<=1 start per pod lifetime"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "email",
+      "fault_type": "memory_stress",
+      "description": "Email pod working-set memory shows a bimodal distribution (mean 63MB, p50 41MB, p95/max ~154MB), which could indicate memory pressure driving the container restarts, though the summary flagged no formal anomaly.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"email-.*\"})",
+          "observed_value": "mean=63279104 B, p50=40583168 B, p95=154060800 B, max=154103808 B",
+          "expected_baseline": "stable working set near p50 (~40MB); no 3.8x spikes"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "As the immediate upstream caller of email, checkout could surface failures when email becomes unavailable during its crash loop; however no elevated error rate or restarts were observed on checkout, so this is a possible secondary effect rather than the root cause.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "max=0.000 restarts for checkout",
+          "expected_baseline": "0 restarts expected; confirms checkout itself is stable"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"email\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "max=0.000 error rate captured on email SERVER spans",
+          "expected_baseline": "email error rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the email pod (email-7699887dd9-rnbxw) describe output and container exit codes to determine why the container keeps crashing.",
+    "Review the email container spec/ConfigMap for the 'definition changed' trigger and roll back the recent change that forced the container restart.",
+    "Check the failing image pull for the sandbox pause image (ErrImagePull/ImagePullBackOff) and restore registry access so the pod sandbox can start reliably.",
+    "Verify/raise memory limits on the email container if memory pressure is confirmed, and monitor working-set memory after rollout."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.5,
+  "latency_s": 21.559209,
+  "cost_usd": 0.00145095,
+  "total_prompt_tokens": 4725,
+  "total_completion_tokens": 1237,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,42 @@
+# AlertmanagerConfig — otel-demo namespace 告警 → 企微群（经宿主机中转）
+# add-oncall-loop design D1/D2：链路 A（集群原生告警治理）。
+#
+# 部署：kubectl apply -f infra/alertmanager/otel-demo-oncall.yaml
+# 前置：prometheus-values.yaml 的 alertmanagerSpec.alertmanagerConfigSelector: {}
+#       + alertmanagerConfigNamespaceSelector: {}（拉取本 CR）
+# 中转：172.18.0.1:18080 = kind bridge gateway → 宿主机一次性 nohup 脚本
+#       （Alertmanager pod 内 127.0.0.1 不通宿主机；gateway IP 实测 172.18.0.1）
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: otel-demo-oncall
+  namespace: otel-demo
+  labels:
+    app.kubernetes.io/part-of: sre-incident-agent
+spec:
+  route:
+    receiver: wecom-relay
+    groupBy:
+      - alertname
+      - service
+      - service_name
+    groupWait: 5m           # 起步值（design D5/风险表）：聚合降噪优先，实测可调
+    groupInterval: 30m
+    repeatInterval: 4h
+  receivers:
+    - name: wecom-relay
+      webhookConfigs:
+        - url: http://172.18.0.1:18080/alert
+          sendResolved: true
+  inhibitRules:
+    # 同服务：CrashLooping（强信号，reason=OOMKilled/CrashLoopBackOff）
+    # 抑制 KubePodNotReady（弱信号）——避免同故障双条轰炸（spec：抑制 ≥1 条）
+    # （kps 91.4.1 CRD：sourceMatch/targetMatch 为 list[object] {name,value}）
+    - sourceMatch:
+        - name: alertname
+          value: KubePodCrashLooping
+      targetMatch:
+        - name: alertname
+          value: KubePodNotReady
+      equal:
+        - namespace

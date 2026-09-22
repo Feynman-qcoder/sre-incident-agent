@@ -1,0 +1,72 @@
+{
+  "incident_id": "product-catalog-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T05:59:57.147047+00:00",
+  "investigation_end_ts": "2026-09-18T06:00:13.540617+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog serves requests with a saturated p99 latency pinned at the ~10000ms ceiling while its error rate, CPU usage, memory usage and pod restart count all remain at normal baselines, indicating a sustained/injected latency fault rather than resource exhaustion, crashes or a failing downstream dependency. As a shared leaf dependency of frontend, checkout and recommendation, this latency propagates up the call graph to all upstream callers.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=7716.873ms, p50=10000ms, p95=10000ms, p99=10000ms, max=10000ms",
+          "expected_baseline": "p99 < 100ms for product-catalog server span duration"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000 (no errors in window)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.027 cores, p99=0.040 cores, max=0.040 cores",
+          "expected_baseline": "cpu_usage ~0.02-0.05 cores (no CPU saturation)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "memory_usage mean=24446293 bytes, max=24985600 bytes",
+          "expected_baseline": "stable ~24MB working set, no memory pressure"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0.000",
+          "expected_baseline": "0 restarts (no crash loop)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=product-catalog, min_duration_ms=5000) over 2026-09-16T07:46:32Z..07:53:32Z",
+          "observed_value": "no traces found",
+          "expected_baseline": "trace lookup attempted to confirm fault; no error traces returned"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"product-catalog\"} over 2026-09-16T07:46:32Z..07:53:32Z",
+          "observed_value": "no logs found",
+          "expected_baseline": "log lookup attempted; no error logs returned"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm and disable the injected latency fault on product-catalog (e.g. flagd fault-injection flag or network delay / tc netem rule for the seed42 scenario) and roll it back.",
+    "Inspect product-catalog request handling for artificial sleeps or downstream I/O stalls; verify the ~10s delay is injected rather than a genuine backend slowdown.",
+    "Restart/roll the product-catalog deployment to clear any stuck latency condition, then confirm p99 server latency returns below 100ms.",
+    "Validate recovery by re-checking p99 latency for product-catalog and its dependents (frontend, checkout, recommendation) to ensure the propagated latency clears."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 16.39357,
+  "cost_usd": 0.0029168999999999996,
+  "total_prompt_tokens": 4938,
+  "total_completion_tokens": 1132,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

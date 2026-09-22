@@ -1,0 +1,107 @@
+{
+  "incident_id": "quote-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T09:26:08.430551+00:00",
+  "investigation_end_ts": "2026-09-18T09:26:42.822434+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "quote",
+      "fault_type": "high_latency",
+      "description": "The quote service (leaf dependency of shipping) is the origin of the incident: its server request rate is zero and its p99 latency histogram yields no samples across the window, while error rate, CPU and restart count are all flat and the pod stays alive — indicating requests are stuck in-flight due to an injected latency fault rather than failing or crashing. That stall propagates up shipping → checkout → frontend, where p99 saturates at ~10 s.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 constant across 07:37–07:44",
+          "expected_baseline": "request_rate > 0 (quote continuously serves shipping)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "no data returned (no completed server latency samples)",
+          "expected_baseline": "p99 latency present and stable in ms range"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "error_rate < 0.01 — confirms stall, not error/crash"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"quote-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.000 (flat, no spike)",
+          "expected_baseline": "no CPU saturation — excludes cpu_stress"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=quote, since_seconds=600)",
+          "observed_value": "only routine ObservedGeneration/FailedMessage updates; no OOMKilled/BackOff/FailedMount",
+          "expected_baseline": "no restart/crash events — pod alive, excludes pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "Shipping is the direct caller of quote and the first upstream hop where the stall manifests; its server latency also yields no completed data and it emits no errors, consistent with blocking on the stalled quote dependency rather than a local fault.",
+      "confidence": 0.4,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "no data returned (no completed server latency samples)",
+          "expected_baseline": "p99 shipping present and low (~ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.001 (flat, no spike)",
+          "expected_baseline": "no CPU saturation — excludes cpu_stress"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout is an upstream victim: its p99 is pinned at the 10 s ceiling with negligible error rate, reflecting checkout blocking on the shipping → quote call path rather than a local resource fault.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms (saturated) across window",
+          "expected_baseline": "p99 checkout < ~500 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.004 (p99 0.021) — near zero",
+          "expected_baseline": "error_rate < 0.01 — latency, not error failure"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the quote pod for an injected latency fault (tc/netem delay or application-level sleep); it stays alive with flat CPU/memory/restarts yet completes zero requests.",
+    "Capture the shipping → quote client-side spans and add a quote client-latency histogram so the blocked dependency becomes directly measurable.",
+    "Restart/redeploy the quote service to clear stuck in-flight requests and shed the latency injection, then confirm quote request_rate and p99 return to baseline and checkout/frontend p99 drop from 10 s."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.9,
+  "latency_s": 34.391883,
+  "cost_usd": 0.0020196,
+  "total_prompt_tokens": 7020,
+  "total_completion_tokens": 1611,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

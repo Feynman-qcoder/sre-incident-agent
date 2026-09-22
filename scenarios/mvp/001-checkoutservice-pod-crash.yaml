@@ -1,0 +1,28 @@
+metadata:
+  scenario_id: checkout-pod_crash-seed42
+  fault_service: checkout
+  fault_type: pod_crash
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Checkout pod down (crash). pod-failure keeps the pod unavailable for the whole window,
+    so the signal is sustained and discriminative: checkout request_rate (server spans) drops
+    to ~0 while callers (frontend) see errors. Expected: request_rate drop, caller error spike.
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: PodChaos
+  metadata:
+    name: checkout-pod-crash-seed42
+    namespace: chaos-mesh
+  spec:
+    action: pod-failure
+    mode: one
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: checkout
+    duration: "300s"

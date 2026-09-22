@@ -1,0 +1,103 @@
+{
+  "incident_id": "watchdog-KubePodNotReady-e170ff2c",
+  "investigation_start_ts": "2026-09-18T08:12:20.670469+00:00",
+  "investigation_end_ts": "2026-09-18T08:12:50.657813+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "email",
+      "fault_type": "pod_crash",
+      "description": "The email pod became NotReady: its container definition was changed and the container was killed for restart, and the recreated pod's sandbox failed to pull the pause image (ErrImagePull/ImagePullBackOff), so the pod could not reach Ready state within the incident window.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container email definition changed, will be restarted",
+          "observed_value": "count=2 within 600s window (namespace otel-demo)",
+          "expected_baseline": "no unexpected email container kills/restarts"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\"",
+          "observed_value": "count=4",
+          "expected_baseline": "sandbox pause image pulls succeed immediately"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff",
+          "observed_value": "count=4",
+          "expected_baseline": "0 ImagePullBackOff events"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max by (pod) (increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\"}[5m]))",
+          "observed_value": "email-7699887dd9-rnbxw restarts=0.000; all pods 0.000",
+          "expected_baseline": "0 restarts (consistent with a container that never successfully starts due to ImagePullBackOff)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "email",
+      "fault_type": "unknown",
+      "description": "Alternative framing: the email pod's sandbox image (gcr.io/google-containers/pause:latest) cannot be pulled from the registry (DeadlineExceeded), pointing to a node/kubelet sandbox-provisioning or image-registry reachability failure rather than an application-level fault in the email code.",
+      "confidence": 0.28,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a",
+          "observed_value": "count=1 (image pull deadline exceeded)",
+          "expected_baseline": "image pull completes without timeout"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"email\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"email\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "email error logs present if the app itself were failing"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "Low-confidence: frontend shows a small, non-dominant server error rate that may reflect propagation of an unavailable downstream pod, but the level is within normal background noise and is not the primary driver of the KubePodNotReady alert.",
+      "confidence": 0.12,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.004, max=0.010",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the email deployment change that triggered 'Container email definition changed' and roll back to the last known-good revision if unintended (kubectl rollout undo deploy/email -n otel-demo).",
+    "Verify node/kubelet connectivity to the registry for gcr.io/google-containers/pause:latest; investigate the DeadlineExceeded pull failure and retry the sandbox pull.",
+    "Pre-pull or cache the sandbox image on the node, or configure a registry mirror/local cache so pod sandbox creation does not depend on a remote pull.",
+    "Once the image is pullable, delete the stuck NotReady email pod so it is recreated cleanly (kubectl delete pod -n otel-demo email-7699887dd9-rnbxw).",
+    "Confirm the email pod returns to Ready and monitor pod readiness / calls_total for email after recovery."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.6,
+  "latency_s": 29.987344,
+  "cost_usd": 0.00411425,
+  "total_prompt_tokens": 6298,
+  "total_completion_tokens": 1819,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,271 @@
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:39:21 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:36 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:39:51 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:06 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_seen                     active_at=2026-09-17T10:40:10.696028+00:00 alertname=OtelDemoHighLatencyP99 fingerprint=998068de namespace=otel-demo service=frontend
+2026-09-17 18:40:21 [info     ] alert_seen                     active_at=2026-09-17T10:40:10.696028+00:00 alertname=OtelDemoHighLatencyP99 fingerprint=a46af510 namespace=otel-demo service=checkout
+2026-09-17 18:40:21 [info     ] alert_seen                     active_at=2026-09-17T10:40:10.696028+00:00 alertname=OtelDemoHighLatencyP99 fingerprint=985567ae namespace=otel-demo service=product-catalog
+2026-09-17 18:40:21 [info     ] alert_seen                     active_at=2026-09-17T10:40:10.696028+00:00 alertname=OtelDemoHighLatencyP99 fingerprint=f919f10f namespace=otel-demo service=recommendation
+2026-09-17 18:40:21 [info     ] alert_seen                     active_at=2026-09-17T10:40:10.696028+00:00 alertname=OtelDemoHighLatencyP99 fingerprint=c2dddb31 namespace=otel-demo service=
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:40:21 [info     ] investigation_started          alertname=OtelDemoHighLatencyP99 fault_type_hint=high_latency incident_id=watchdog-OtelDemoHighLatencyP99-998068de service=frontend window_end=2026-09-17T10:40:21.395627+00:00 window_start=2026-09-17T10:38:10.696028+00:00
+2026-09-17 18:41:29 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-17 18:41:29 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:41:29 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:41:29 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:41:29 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:41:29 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:41:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:41:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:41:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:41:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:41:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:41:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:41:46 [info     ] tool_call                      iteration=2 name=search_traces
+2026-09-17 18:41:46 [info     ] tool_call                      iteration=2 name=query_loki
+2026-09-17 18:41:50 [info     ] tool_call                      iteration=3 name=get_trace
+2026-09-17 18:41:50 [warning  ] tool_error                     error="Client error '404 Not Found' for url 'http://localhost:3200/api/traces/2b40c40b443d1ce0'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404" tool=get_trace
+2026-09-17 18:42:46 [info     ] investigation_complete         cost_usd=0.00445935 incident_id=watchdog-OtelDemoHighLatencyP99-998068de latency_s=144.583688 report_path=artifacts/watchdog/20260917T104246Z_OtelDemoHighLatencyP99_frontend.json top_fault_type=high_latency top_service=product-catalog wall_latency_s=144.6
+2026-09-17 18:42:46 [info     ] investigation_started          alertname=OtelDemoHighLatencyP99 fault_type_hint=high_latency incident_id=watchdog-OtelDemoHighLatencyP99-a46af510 service=checkout window_end=2026-09-17T10:40:21.395627+00:00 window_start=2026-09-17T10:38:10.696028+00:00
+2026-09-17 18:43:03 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-17 18:43:03 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:43:03 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:43:11 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:43:11 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:43:11 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:43:11 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:43:15 [info     ] tool_call                      iteration=2 name=search_traces
+2026-09-17 18:43:15 [info     ] tool_call                      iteration=2 name=get_pod_events
+2026-09-17 18:43:15 [info     ] tool_call                      iteration=2 name=query_loki
+2026-09-17 18:43:18 [info     ] tool_call                      iteration=3 name=get_trace
+2026-09-17 18:43:18 [warning  ] tool_error                     error="Client error '404 Not Found' for url 'http://localhost:3200/api/traces/2b40c40b443d1ce0'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404" tool=get_trace
+2026-09-17 18:43:25 [info     ] tool_call                      iteration=4 name=get_trace
+2026-09-17 18:43:25 [warning  ] tool_error                     error="Client error '404 Not Found' for url 'http://localhost:3200/api/traces/e5a6d0ab1f739b20'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404" tool=get_trace
+2026-09-17 18:43:25 [info     ] tool_call                      iteration=4 name=search_traces
+2026-09-17 18:45:20 [info     ] investigation_complete         cost_usd=0.0073387999999999995 incident_id=watchdog-OtelDemoHighLatencyP99-a46af510 latency_s=153.901348 report_path=artifacts/watchdog/20260917T104520Z_OtelDemoHighLatencyP99_checkout.json top_fault_type=high_latency top_service=product-catalog wall_latency_s=153.9
+2026-09-17 18:45:20 [info     ] investigation_started          alertname=OtelDemoHighLatencyP99 fault_type_hint=high_latency incident_id=watchdog-OtelDemoHighLatencyP99-985567ae service=product-catalog window_end=2026-09-17T10:40:21.395627+00:00 window_start=2026-09-17T10:38:10.696028+00:00
+2026-09-17 18:46:06 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-17 18:46:06 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:46:06 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:46:18 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:46:18 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:46:18 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:46:23 [info     ] tool_call                      iteration=2 name=search_traces
+2026-09-17 18:46:23 [info     ] tool_call                      iteration=2 name=get_pod_events
+2026-09-17 18:46:26 [info     ] tool_call                      iteration=3 name=get_trace
+2026-09-17 18:46:26 [warning  ] tool_error                     error="Client error '404 Not Found' for url 'http://localhost:3200/api/traces/e5a6d0ab1f739b20'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404" tool=get_trace
+2026-09-17 18:46:29 [info     ] tool_call                      iteration=4 name=get_trace
+2026-09-17 18:46:29 [warning  ] tool_error                     error="Client error '404 Not Found' for url 'http://localhost:3200/api/traces/2b40c40b443d1ce0'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404" tool=get_trace
+2026-09-17 18:46:29 [info     ] tool_call                      iteration=4 name=query_loki
+2026-09-17 18:47:57 [info     ] investigation_complete         cost_usd=0.00558425 incident_id=watchdog-OtelDemoHighLatencyP99-985567ae latency_s=156.911915 report_path=artifacts/watchdog/20260917T104757Z_OtelDemoHighLatencyP99_product-catalog.json top_fault_type=high_latency top_service=product-catalog wall_latency_s=156.9
+2026-09-17 18:47:57 [info     ] investigation_started          alertname=OtelDemoHighLatencyP99 fault_type_hint=high_latency incident_id=watchdog-OtelDemoHighLatencyP99-f919f10f service=recommendation window_end=2026-09-17T10:40:21.395627+00:00 window_start=2026-09-17T10:38:10.696028+00:00
+2026-09-17 18:49:02 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-17 18:49:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:49:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:49:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:49:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:49:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:49:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:49:23 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:50:16 [info     ] investigation_complete         cost_usd=0.00354165 incident_id=watchdog-OtelDemoHighLatencyP99-f919f10f latency_s=139.24464 report_path=artifacts/watchdog/20260917T105016Z_OtelDemoHighLatencyP99_recommendation.json top_fault_type=high_latency top_service=product-catalog wall_latency_s=139.2
+2026-09-17 18:50:16 [info     ] investigation_started          alertname=OtelDemoHighLatencyP99 fault_type_hint=high_latency incident_id=watchdog-OtelDemoHighLatencyP99-c2dddb31 service= window_end=2026-09-17T10:40:21.395627+00:00 window_start=2026-09-17T10:38:10.696028+00:00
+2026-09-17 18:51:33 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-17 18:51:33 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:51:33 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:51:33 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-17 18:51:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:51:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:51:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:51:39 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-17 18:51:45 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-17 18:51:45 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-17 18:51:45 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-17 18:51:45 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-17 18:51:54 [info     ] tool_call                      iteration=3 name=search_traces
+2026-09-17 18:51:54 [info     ] tool_call                      iteration=3 name=query_loki
+2026-09-17 18:51:57 [info     ] tool_call                      iteration=4 name=get_trace
+2026-09-17 18:51:57 [warning  ] tool_error                     error="Client error '404 Not Found' for url 'http://localhost:3200/api/traces/e5a6d0ab1f739b20'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404" tool=get_trace
+2026-09-17 18:52:04 [info     ] tool_call                      iteration=5 name=query_prometheus_range
+2026-09-17 18:53:00 [info     ] investigation_complete         cost_usd=0.0047925500000000005 incident_id=watchdog-OtelDemoHighLatencyP99-c2dddb31 latency_s=163.691084 report_path=artifacts/watchdog/20260917T105300Z_OtelDemoHighLatencyP99_.json top_fault_type=high_latency top_service=product-catalog wall_latency_s=163.7
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:15 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:53:30 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:53:45 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:00 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:54:15 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:54:30 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:54:45 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:55:00 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:55:15 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:30 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:55:45 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=PrometheusNotConnectedToAlertmanagers namespace=monitoring pod=prometheus-prometheus-kube-prometheus-prometheus-0 reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-17 18:56:00 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist

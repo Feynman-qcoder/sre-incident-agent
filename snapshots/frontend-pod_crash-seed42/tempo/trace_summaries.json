@@ -1,0 +1,104 @@
+[
+  {
+    "traceID": "6af642aac067a01f22955dee6e4bc758",
+    "rootServiceName": "frontend-proxy",
+    "rootTraceName": "ingress",
+    "startTimeUnixNano": "1789546550030927000",
+    "durationMs": 5000
+  },
+  {
+    "traceID": "1cb208886a18fbfdb2ab5f5a7affed93",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_checkout_multi",
+    "startTimeUnixNano": "1789546548038372543",
+    "durationMs": 42
+  },
+  {
+    "traceID": "afd88904d7977572474f0727aaf7a638",
+    "rootServiceName": "<root span not yet received>",
+    "startTimeUnixNano": "1789546544217745000",
+    "durationMs": 3856
+  },
+  {
+    "traceID": "fef8710ecdeca535780909decd185681",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_checkout_multi",
+    "startTimeUnixNano": "1789546519923954314",
+    "durationMs": 7820
+  },
+  {
+    "traceID": "841cbdc1465b772a5522af67c52785aa",
+    "rootServiceName": "<root span not yet received>",
+    "startTimeUnixNano": "1789546505848614000",
+    "durationMs": 7987
+  },
+  {
+    "traceID": "a460e38245609290fa28023a1259445c",
+    "rootServiceName": "<root span not yet received>",
+    "startTimeUnixNano": "1789546493538000000",
+    "durationMs": 7577
+  },
+  {
+    "traceID": "6403afc96ceb8d7de9df40b895741828",
+    "rootServiceName": "accounting",
+    "rootTraceName": "order-consumed",
+    "startTimeUnixNano": "1789546548460807400",
+    "durationMs": 5078
+  },
+  {
+    "traceID": "4fd08fd429ec82dfd0fb93661742325a",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "browser_add_to_cart",
+    "startTimeUnixNano": "1789546543108228223",
+    "durationMs": 3026
+  },
+  {
+    "traceID": "be6a2400b27006b3cc5dce23a3dfa56",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "browser_change_currency",
+    "startTimeUnixNano": "1789546531589916845",
+    "durationMs": 2436
+  },
+  {
+    "traceID": "e4efa9c5026dde5dc37ab52071e63b99",
+    "rootServiceName": "accounting",
+    "rootTraceName": "order-consumed",
+    "startTimeUnixNano": "1789546511976169800",
+    "durationMs": 30165
+  },
+  {
+    "traceID": "298bf878368cd48745a595777d3d1192",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "browser_change_currency",
+    "startTimeUnixNano": "1789546637133312365",
+    "durationMs": 2504
+  },
+  {
+    "traceID": "4bb919bebfba3cd88031f352da4f8c14",
+    "rootServiceName": "frontend-proxy",
+    "rootTraceName": "ingress",
+    "startTimeUnixNano": "1789546632238216000",
+    "durationMs": 2776
+  },
+  {
+    "traceID": "8aa2d2422c9a375d7ba2abc670331af8",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "browser_add_to_cart",
+    "startTimeUnixNano": "1789546631973346221",
+    "durationMs": 2958
+  },
+  {
+    "traceID": "95eb4576a357318adc7fa6550dd5bd1e",
+    "rootServiceName": "accounting",
+    "rootTraceName": "order-consumed",
+    "startTimeUnixNano": "1789546630819866000",
+    "durationMs": 596
+  },
+  {
+    "traceID": "e54a1e755eed9b60f1101b604338455",
+    "rootServiceName": "accounting",
+    "rootTraceName": "order-consumed",
+    "startTimeUnixNano": "1789546625456235500",
+    "durationMs": 5363
+  }
+]

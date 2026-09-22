@@ -1,0 +1,84 @@
+{
+  "incident_id": "watchdog-OtelDemoHighClientErrorRate-2f18fc07",
+  "investigation_start_ts": "2026-09-18T10:31:20.820139+00:00",
+  "investigation_end_ts": "2026-09-18T10:32:06.929117+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "product-catalog shows a severe, isolated CPU surge (~2.1 cores) while every peer service stays near-idle (<0.13 cores). Requests that depend on it (frontend browse_product, recommendation get_recommendations, checkout add_to_cart) block for 15-30s, so client-facing calls exceed their deadline and surface as watchdog client errors while server-side error counters stay at zero.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=2.100 p50=2.143 p95=2.302 p99=2.321 max=2.326 cores",
+          "expected_baseline": "peer services in same window: checkout=0.031, cart=0.002, recommendation=0.012, frontend=0.120 cores"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "1eb85988567967ca",
+          "observed_value": "user_add_to_cart duration=30003ms (ok, no error)",
+          "expected_baseline": "checkout add_to_cart p95 < 500ms in steady state"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "152a1e56af4acd8d",
+          "observed_value": "user_get_recommendations duration=15000ms (ok, no error)",
+          "expected_baseline": "recommendation request p95 < 500ms in steady state"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "Independent of the CPU reading, the dominant observable symptom is extreme request latency: checkout/frontend traces in the window show p95_duration=106509ms with individual spans pinned at 15000ms and 30000ms (deadline timeouts). All affected operations (browse_product, get_recommendations, add_to_cart) transitively depend on product-catalog, indicating product-catalog is the source of stalled responses.",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout server error rate = 0.000 across window, yet search_traces for checkout returned 20 traces / 0 with errors / p95_duration=106509ms (spans 15000ms, 30001ms, 30003ms)",
+          "expected_baseline": "checkout p95_duration < 500ms; no spans near the 15s/30s deadline"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "152a1e56af4acd8d",
+          "observed_value": "user_get_recommendations=15000ms and user_browse_product=15001ms from frontend trace search (20 traces, 0 errors, p95_duration=106509ms)",
+          "expected_baseline": "frontend p95_duration < 500ms in steady state"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "quote",
+      "fault_type": "pod_crash",
+      "description": "Kubernetes reports the quote container being killed and restarted alongside sandbox image pull failures/BackOff, which could add latency to the shipping→quote leaf path. Low confidence: only a single restart event and no corresponding error-rate or resource anomaly was observed for quote in this window.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container quote definition changed, will be restarted",
+          "observed_value": "count=1 restart event for quote pod in otel-demo (with Failed/BackOff: ErrImagePull, ImagePullBackOff on pause image)",
+          "expected_baseline": "0 restarts over the window"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable/roll back the cpu_stress (or equivalent latency) fault injection on the product-catalog service via its flagd flag and confirm product-catalog CPU returns to <0.2 cores.",
+    "Restart the product-catalog deployment pods to clear any stuck/contended state and re-check that browse_product, get_recommendations and add_to_cart p99 durations drop below 500ms.",
+    "Verify upstream impact clears: frontend and checkout client error rate returns to 0 and no spans are pinned at the 15s/30s deadline.",
+    "Inspect the quote pod restart / pause-image ImagePullBackOff events as a secondary item and re-create the quote pod if shipping latency remains elevated."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.6,
+  "latency_s": 46.108978,
+  "cost_usd": 0.00441245,
+  "total_prompt_tokens": 7894,
+  "total_completion_tokens": 1571,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

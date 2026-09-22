@@ -1,0 +1,103 @@
+{
+  "incident_id": "watchdog-OtelDemoTelemetryAbsent-3fa4f1b3",
+  "investigation_start_ts": "2026-09-18T10:48:06.341006+00:00",
+  "investigation_end_ts": "2026-09-18T10:48:42.248622+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "The product-catalog pod is CPU-saturated (~2.03 cores peak, roughly 65x the checkout pod's 0.03 cores) while remaining error-free, a classic CPU-burn/starvation signature. This starvation stalls the product-catalog leaf (multi-second request latencies), whose downstream callers (recommendation, frontend, checkout) then time out and emit UNAVAILABLE gRPC errors, matching the OtelDemoTelemetryAbsent watchdog.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "max=2.034, p99=2.022, p95=1.976 (mean=0.741)",
+          "expected_baseline": "~0.03 cores (checkout max=0.031), ~0.28 cores (frontend max=0.281), ~0.002 cores (cart)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "max=0.031, p99=0.031 (mean=0.013)",
+          "expected_baseline": "peer comparison: product-catalog is ~65x higher at peak"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=product-catalog error_only=True -> traces 61aea6d30a53f949, ef777f8485eb539a, a5c2a9fb7975fe6d",
+          "observed_value": "20 traces, 0 with errors, p95_duration=49503ms; user_browse_product=15001ms, user_get_recommendations=15001ms, user_view_cart=15000ms",
+          "expected_baseline": "sub-second p95 for a healthy catalog lookup"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=~\".+\"} |= \"error\"",
+          "observed_value": "error=100; StatusCode.UNAVAILABLE: failed to connect to all addresses (_InactiveRpcError in Python gRPC downstream caller)",
+          "expected_baseline": "no connection-refused / UNAVAILABLE RPC errors"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded",
+          "observed_value": "Error: ErrImagePull count=5; BackOff: Back-off pulling image count=20",
+          "expected_baseline": "no ErrImagePull/BackOff events in otel-demo"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "Alternatively the injected fault manifests primarily as a latency spike on product-catalog: trace p95 of ~49.5s and 15s per request, propagated to recommendation/frontend which then fail with UNAVAILABLE while product-catalog's own server error rate stays at zero.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=product-catalog error_only=True -> traces 61aea6d30a53f949, ef777f8485eb539a, a5c2a9fb7975fe6d",
+          "observed_value": "p95_duration=49503ms; individual spans 15000-15001ms",
+          "expected_baseline": "healthy product-catalog p95 well under 1s"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000 p50=0.000 p95=0.000 p99=0.000 max=0.000",
+          "expected_baseline": "steady non-zero catalog server request rate"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "Checkout shows container recreate/restart activity (Created/Started events and a restart delta ~1.1) that could disrupt request handling, but its error rate and CPU usage are not anomalous, so this is a weaker explanation for absent telemetry.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "max=1.111, p95=1.111",
+          "expected_baseline": "0 restarts over 5m for a stable pod"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Created: Container created (count=3); Started: Container started (count=3)",
+          "observed_value": "checkout container (demo:3.0.0-checkout) created/started 3 times",
+          "expected_baseline": "single container creation per pod lifetime"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm CPU saturation on the product-catalog pod: kubectl top pod -n otel-demo -l app.kubernetes.io/name=product-catalog and compare usage against its requests/limits.",
+    "If a cpu_stress/CPU-burn fault is injected against product-catalog, stop the fault injection (chaos harness / flagd) to relieve core starvation.",
+    "Horizontally scale product-catalog replicas and/or raise its CPU limits so it can absorb load without multi-second request stalls.",
+    "Verify downstream recovery: recommendation/frontend/checkout UNAVAILABLE (_InactiveRpcError) logs should cease and product-catalog span p95 should return to sub-second.",
+    "Investigate and fix the pause-image ErrImagePull/BackOff events (gcr.io/google-containers/pause:latest) so pod sandbox creation does not fail and telemetry export resumes."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.6,
+  "latency_s": 35.907616,
+  "cost_usd": 0.00505015,
+  "total_prompt_tokens": 7598,
+  "total_completion_tokens": 2277,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

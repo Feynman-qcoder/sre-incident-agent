@@ -1,0 +1,114 @@
+[
+  {
+    "snapshot_dir": "snapshots\\checkout-pod_crash-seed42",
+    "agent": {
+      "scenario_id": "checkout-pod_crash-seed42",
+      "ground_truth_service": "checkout",
+      "ground_truth_fault_type": "pod_crash",
+      "predicted_service": "checkout",
+      "predicted_fault_type": "pod_crash",
+      "accuracy_at_1": 1,
+      "accuracy_at_3": 1,
+      "mrr": 1.0,
+      "fault_type_correct": 1,
+      "grounding_score": 0.5,
+      "latency_s": 199.278215,
+      "cost_usd": 0.0039942,
+      "hallucination_warning": true
+    }
+  },
+  {
+    "snapshot_dir": "snapshots\\product-catalog-high_latency-seed42",
+    "agent": {
+      "scenario_id": "product-catalog-high_latency-seed42",
+      "ground_truth_service": "product-catalog",
+      "ground_truth_fault_type": "high_latency",
+      "predicted_service": "product-catalog",
+      "predicted_fault_type": "high_latency",
+      "accuracy_at_1": 1,
+      "accuracy_at_3": 1,
+      "mrr": 1.0,
+      "fault_type_correct": 1,
+      "grounding_score": 1.0,
+      "latency_s": 122.442774,
+      "cost_usd": 0.0034362999999999998,
+      "hallucination_warning": false
+    }
+  },
+  {
+    "snapshot_dir": "snapshots\\payment-http_abort-seed42",
+    "agent": {
+      "scenario_id": "payment-http_abort-seed42",
+      "ground_truth_service": "payment",
+      "ground_truth_fault_type": "http_abort",
+      "predicted_service": "payment",
+      "predicted_fault_type": "http_abort",
+      "accuracy_at_1": 1,
+      "accuracy_at_3": 1,
+      "mrr": 1.0,
+      "fault_type_correct": 1,
+      "grounding_score": 0.8182,
+      "latency_s": 136.265356,
+      "cost_usd": 0.0041506500000000005,
+      "hallucination_warning": false
+    }
+  },
+  {
+    "snapshot_dir": "snapshots\\recommendation-cpu_stress-seed42",
+    "agent": {
+      "scenario_id": "recommendation-cpu_stress-seed42",
+      "ground_truth_service": "recommendation",
+      "ground_truth_fault_type": "cpu_stress",
+      "predicted_service": "recommendation",
+      "predicted_fault_type": "cpu_stress",
+      "accuracy_at_1": 1,
+      "accuracy_at_3": 1,
+      "mrr": 1.0,
+      "fault_type_correct": 1,
+      "grounding_score": 1.0,
+      "latency_s": 605.381432,
+      "cost_usd": 0.0036771,
+      "hallucination_warning": false
+    }
+  },
+  {
+    "snapshot_dir": "snapshots\\cart-memory_stress-seed42",
+    "error": "Could not parse response content as the length limit was reached - CompletionUsage(completion_tokens=8192, prompt_tokens=2450, total_tokens=10642, completion_tokens_details=CompletionTokensDetails(accepted_prediction_tokens=None, audio_tokens=None, reasoning_tokens=7321, rejected_prediction_tokens=None, text_tokens=None), prompt_tokens_details=PromptTokensDetails(audio_tokens=None, cache_write_tokens=None, cached_tokens=0, image_tokens=None, text_tokens=None))"
+  },
+  {
+    "snapshot_dir": "snapshots\\shipping-high_latency-seed42",
+    "agent": {
+      "scenario_id": "shipping-high_latency-seed42",
+      "ground_truth_service": "shipping",
+      "ground_truth_fault_type": "high_latency",
+      "predicted_service": "shipping",
+      "predicted_fault_type": "high_latency",
+      "accuracy_at_1": 1,
+      "accuracy_at_3": 1,
+      "mrr": 1.0,
+      "fault_type_correct": 1,
+      "grounding_score": 1.0,
+      "latency_s": 405.502435,
+      "cost_usd": 0.00342895,
+      "hallucination_warning": false
+    }
+  },
+  {
+    "snapshot_dir": "snapshots\\frontend-pod_crash-seed42",
+    "agent": {
+      "scenario_id": "frontend-pod_crash-seed42",
+      "ground_truth_service": "frontend",
+      "ground_truth_fault_type": "pod_crash",
+      "predicted_service": "frontend",
+      "predicted_fault_type": "pod_crash",
+      "accuracy_at_1": 1,
+      "accuracy_at_3": 1,
+      "mrr": 1.0,
+      "fault_type_correct": 1,
+      "grounding_score": 1.0,
+      "latency_s": 487.086823,
+      "cost_usd": 0.00406875,
+      "hallucination_warning": false
+    }
+  }
+]

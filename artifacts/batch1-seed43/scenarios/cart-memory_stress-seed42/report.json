@@ -1,0 +1,77 @@
+{
+  "incident_id": "cart-memory_stress-seed42",
+  "investigation_start_ts": "2026-09-18T09:24:09.081973+00:00",
+  "investigation_end_ts": "2026-09-18T09:24:28.445504+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "The cart service is the dominant anomaly: its container working set averages ~93MB and peaks at ~108MB, roughly 4x peer services (checkout ~24.7MB, product-catalog ~24.2MB), while CPU (~0.035) and error rate (0.0) stay low. This isolated memory-pressure signature, plus cart container recreation events, matches a memory_stress fault injected on cart.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "mean=93337463.467 (93.3MB), p95=108041011.2, max=108339200 (108.3MB)",
+          "expected_baseline": "peer services ~24MB (checkout mean=24669661.867; product-catalog mean=24191249.067)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "mean=24669661.867 (24.7MB), max=25399296",
+          "expected_baseline": "non-faulted peer service memory footprint"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=24191249.067 (24.2MB), max=24584192",
+          "expected_baseline": "non-faulted peer service memory footprint"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[2m]))",
+          "observed_value": "mean=0.035, max=0.102",
+          "expected_baseline": "low CPU confirms memory pressure is not CPU-driven"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000 p99=0.000 max=0.000",
+          "expected_baseline": "error_rate < 0.01 (healthy steady state)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "mean=0.619, p95=1.031, max=1.031",
+          "expected_baseline": "0 restarts for a healthy steady-state pod"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Created: Container created (count=2)",
+          "observed_value": "cart container created twice in the window",
+          "expected_baseline": "single container start per pod lifetime"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=12.136, p95=53.276, max=78.573",
+          "expected_baseline": "modest latency; not a latency-dominated fault"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable the cart memory_stress fault via the fault-injection control plane (flagd) for the seed42 scenario.",
+    "Raise the cart pod memory requests/limits and investigate a possible memory leak, since the cart working set (~93-108MB) ran ~4x its peer services (~24MB) and the container was recreated twice.",
+    "Monitor cart container_memory_working_set_bytes and restart counts after remediation to confirm the working set returns to the ~24MB peer baseline."
+  ],
+  "fault_type_classification": "memory_stress",
+  "grounding_score": 1.0,
+  "latency_s": 19.363531,
+  "cost_usd": 0.0014637,
+  "total_prompt_tokens": 4838,
+  "total_completion_tokens": 1230,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

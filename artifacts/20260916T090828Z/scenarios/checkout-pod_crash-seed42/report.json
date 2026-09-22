@@ -1,0 +1,97 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-16T09:08:39.172616+00:00",
+  "investigation_end_ts": "2026-09-16T09:11:58.450831+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed and recreated during the incident window ('Killing: Container checkout definition changed, will be restarted'), taking the service offline. Server-side request rate collapsed to zero (p50=0.000 req/s) while server-side error rate stayed at 0.000 — the signature of a dead pod whose traffic fails at callers (frontend, accounting, fraud-detection) rather than at the server. Recovery was prolonged by ImagePullBackOff on the pause image.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+          "observed_value": "count=1 during window; followed by Created (count=2) and Started (count=2) container events confirming pod recreation",
+          "expected_baseline": "No Killing/restart events for checkout pods in steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff",
+          "observed_value": "count=4; Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=4), ErrImagePull (count=3), DeadlineExceeded rpc errors (count=3)",
+          "expected_baseline": "No image pull failures; pause image cached and pulls succeed"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.018, p50=0.000, p95=0.057, max=0.057 req/s — service effectively not serving for most of the window",
+          "expected_baseline": "Continuous nonzero checkout request rate throughout the window"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000 across entire window",
+          "expected_baseline": "error_rate < 0.01; zero server-side errors combined with zero traffic confirms the pod was down rather than erroring"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "anomaly window [1789544081.978→1789544141.978], max=25333760 bytes vs p50=548864 bytes — series discontinuity consistent with pod kill/recreation at incident start",
+          "expected_baseline": "Flat, continuous memory series with no anomaly window"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "memory_stress",
+      "description": "A memory anomaly window was detected at the start of the incident (max 25.3MB vs p50 548KB), which could indicate memory pressure around the crash; however, no OOMKilled event was observed and absolute values are small, so this is more consistent with pod recreation than an OOM kill.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "mean=5323707.733, p50=548864, p95=24430592, p99=25153126.400, max=25333760 bytes, anomaly [1789544081.978→1789544141.978]",
+          "expected_baseline": "Stable memory profile with no anomaly window"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+          "observed_value": "Kill event attributed to definition change, not OOMKilled; no OOMKilled events present in the checkout event list",
+          "expected_baseline": "An OOMKilled event would be required to confirm memory_stress as the primary cause"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "unknown",
+      "description": "The pause-image ImagePullBackOff (DeadlineExceeded pulling gcr.io/google-containers/pause:latest) prolonged the outage after the container kill, indicating an image-registry/network issue during pod recovery that extended downtime beyond the initial crash.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a",
+          "observed_value": "count=2 (plus ErrImagePull count=3, ImagePullBackOff count=4, BackOff count=4)",
+          "expected_baseline": "Image pulls succeed or image is cached; no ErrImagePull/BackOff events"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Audit deployment/config changes to checkout around 2026-09-16T07:34 UTC ('definition changed, will be restarted' indicates a spec change or forced restart) and roll back the offending change if identified.",
+    "Pre-pull or mirror gcr.io/google-containers/pause:latest (and all demo images) to a local registry to eliminate ImagePullBackOff/DeadlineExceeded delays during pod recovery.",
+    "Add alerting on checkout request_rate==0 and on Killing/BackOff pod events, since server-side error metrics stay at 0 when the pod is dead and will not fire.",
+    "Verify checkout memory requests/limits and monitor for OOMKilled events; no OOM was observed this window, but confirm the restart was not resource-driven.",
+    "Add redundancy (multiple checkout replicas) so a single pod kill does not take the checkout path fully offline for its callers (frontend, accounting, fraud-detection)."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.5,
+  "latency_s": 199.278215,
+  "cost_usd": 0.0039942,
+  "total_prompt_tokens": 4362,
+  "total_completion_tokens": 2350,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

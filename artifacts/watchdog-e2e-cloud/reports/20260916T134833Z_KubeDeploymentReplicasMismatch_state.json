@@ -1,0 +1,97 @@
+{
+  "incident_id": "watchdog-KubeDeploymentReplicasMismatch-88f37cbc",
+  "investigation_start_ts": "2026-09-16T13:45:58.157997+00:00",
+  "investigation_end_ts": "2026-09-16T13:48:33.715712+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed ('Container checkout definition changed, will be restarted') and replacement pods could never become Ready because the sandbox pause image gcr.io/google-containers/pause:latest failed to pull (DeadlineExceeded -> ErrImagePull -> ImagePullBackOff). With pods unavailable, the checkout Deployment's available replicas fell below desired, firing KubeDeploymentReplicasMismatch; checkout served near-zero traffic (request_rate ~0.01 req/s, CPU ~0.002 cores) during the window.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=2)",
+          "observed_value": "checkout container killed/restarted 2 times during the incident window",
+          "expected_baseline": "no Killing/restart events for checkout pods in steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff (count=3)",
+          "observed_value": "3 ImagePullBackOff events; also 'Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=3)' and 'Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded (count=3)'",
+          "expected_baseline": "replacement pods start successfully; no ErrImagePull/ImagePullBackOff events"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.010 req/s, p50=0.000 (checkout effectively not serving traffic)",
+          "expected_baseline": "checkout request_rate > 1 req/s under normal load-generator traffic"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.002 cores, max=0.009 cores (near-zero, pods down/not ready)",
+          "expected_baseline": "checkout CPU usage well above 0.01 cores under normal traffic"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "With checkout pods unavailable, frontend requests depending on checkout timed out: frontend p99 latency pinned at 10000ms (timeout signature) and frontend error_rate rose to ~0.05-0.12, propagating the checkout outage to end users.",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms = 10000.000 flat across the window (mean/p50/p95/p99/max all 10000)",
+          "expected_baseline": "frontend p99 latency in the low hundreds of ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.050, p95=0.105, max=0.124",
+          "expected_baseline": "frontend error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Traces touching checkout during the window show extreme durations (p95=54483ms, top traces at 15000ms) with zero span-level errors, consistent with callers blocking on timeouts while checkout pods were unavailable rather than slow in-process work (CPU and memory near zero).",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "8d7291c48ceeb50a",
+          "observed_value": "search_traces(checkout, error_only=true): 20 traces, 0 errors, p95_duration=54483ms; top traces 8d7291c48ceeb50a / cfc31e658325f268 / eee274c3dd553f3e each ~15000ms",
+          "expected_baseline": "checkout trace durations p95 < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "memory mean=19815787 bytes, max=41394176 bytes (~41MB, no memory pressure)",
+          "expected_baseline": "no OOM-level memory growth; rules out memory_stress as cause"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Fix the image pull failure for gcr.io/google-containers/pause:latest (pre-pull/cache the pause image on nodes, or point the pod sandbox image at an accessible registry/mirror) so replacement checkout pods can start.",
+    "Review and roll back or correct the checkout deployment definition change that triggered the container kills ('Container checkout definition changed, will be restarted').",
+    "Verify the checkout Deployment returns to its desired replica count and is Ready (kubectl -n otel-demo rollout status deployment/checkout), then confirm request_rate and CPU recover.",
+    "Monitor frontend p99 latency and error_rate until they return to baseline once checkout is serving traffic again.",
+    "Add alerting on ErrImagePull/ImagePullBackOff and KubeDeploymentReplicasMismatch with faster notification to catch pod-startup failures before user impact."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.95,
+  "latency_s": 155.557715,
+  "cost_usd": 0.00399665,
+  "total_prompt_tokens": 4843,
+  "total_completion_tokens": 2192,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

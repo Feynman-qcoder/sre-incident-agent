@@ -1,0 +1,32 @@
+[
+  {
+    "snapshot_dir": "snapshots\\checkout-pod_crash-seed42",
+    "agent": {
+      "scenario_id": "checkout-pod_crash-seed42",
+      "ground_truth_service": "checkout",
+      "ground_truth_fault_type": "pod_crash",
+      "predicted_service": "checkout",
+      "predicted_fault_type": "pod_crash",
+      "accuracy_at_1": 1,
+      "accuracy_at_3": 1,
+      "mrr": 1.0,
+      "fault_type_correct": 1,
+      "grounding_score": 0.6,
+      "latency_s": 81.694332,
+      "cost_usd": 0.0027919499999999996,
+      "hallucination_warning": true
+    }
+  },
+  {
+    "snapshot_dir": "snapshots\\payment-http_abort-seed42",
+    "error": "Could not parse response content as the length limit was reached - CompletionUsage(completion_tokens=2048, prompt_tokens=3994, total_tokens=6042, completion_tokens_details=CompletionTokensDetails(accepted_prediction_tokens=None, audio_tokens=None, reasoning_tokens=2046, rejected_prediction_tokens=None, text_tokens=None), prompt_tokens_details=PromptTokensDetails(audio_tokens=None, cache_write_tokens=None, cached_tokens=0, image_tokens=None, text_tokens=None))"
+  },
+  {
+    "snapshot_dir": "snapshots\\recommendation-cpu_stress-seed42",
+    "error": "Could not parse response content as the length limit was reached - CompletionUsage(completion_tokens=2048, prompt_tokens=2024, total_tokens=4072, completion_tokens_details=CompletionTokensDetails(accepted_prediction_tokens=None, audio_tokens=None, reasoning_tokens=2046, rejected_prediction_tokens=None, text_tokens=None), prompt_tokens_details=PromptTokensDetails(audio_tokens=None, cache_write_tokens=None, cached_tokens=0, image_tokens=None, text_tokens=None))"
+  },
+  {
+    "snapshot_dir": "snapshots\\cart-memory_stress-seed42",
+    "error": "Could not parse response content as the length limit was reached - CompletionUsage(completion_tokens=2048, prompt_tokens=3351, total_tokens=5399, completion_tokens_details=CompletionTokensDetails(accepted_prediction_tokens=None, audio_tokens=None, reasoning_tokens=2046, rejected_prediction_tokens=None, text_tokens=None), prompt_tokens_details=PromptTokensDetails(audio_tokens=None, cache_write_tokens=None, cached_tokens=0, image_tokens=None, text_tokens=None))"
+  }
+]

@@ -1,0 +1,101 @@
+[
+  {
+    "type": "Normal",
+    "reason": "Pulled",
+    "message": "Container image \"ghcr.io/open-telemetry/demo:3.0.0-email\" already present on machine and can be accessed by the pod",
+    "count": 3,
+    "first_time": "2026-09-18 03:20:42+00:00",
+    "last_time": "2026-09-18 08:15:54+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Normal",
+    "reason": "Created",
+    "message": "Container created",
+    "count": 3,
+    "first_time": "2026-09-18 03:20:47+00:00",
+    "last_time": "2026-09-18 08:15:54+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Normal",
+    "reason": "Started",
+    "message": "Container started",
+    "count": 3,
+    "first_time": "2026-09-18 03:20:47+00:00",
+    "last_time": "2026-09-18 08:15:54+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Normal",
+    "reason": "Killing",
+    "message": "Container email definition changed, will be restarted",
+    "count": 2,
+    "first_time": "2026-09-18 06:54:25+00:00",
+    "last_time": "2026-09-18 08:10:55+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Normal",
+    "reason": "Pulling",
+    "message": "Pulling image \"gcr.io/google-containers/pause:latest\"",
+    "count": 6,
+    "first_time": "2026-09-18 06:54:26+00:00",
+    "last_time": "2026-09-18 08:13:08+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Warning",
+    "reason": "Failed",
+    "message": "Error: ErrImagePull",
+    "count": 6,
+    "first_time": "2026-09-18 06:54:57+00:00",
+    "last_time": "2026-09-18 08:13:38+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Normal",
+    "reason": "BackOff",
+    "message": "Back-off pulling image \"gcr.io/google-containers/pause:latest\"",
+    "count": 6,
+    "first_time": "2026-09-18 06:54:57+00:00",
+    "last_time": "2026-09-18 08:13:53+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Warning",
+    "reason": "Failed",
+    "message": "Error: ImagePullBackOff",
+    "count": 6,
+    "first_time": "2026-09-18 06:54:57+00:00",
+    "last_time": "2026-09-18 08:13:53+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Warning",
+    "reason": "Failed",
+    "message": "Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull and unpack image \"gcr.io/google-containers/pause:latest\": failed to resolve reference \"gcr.io/google-containers/pause:latest\": failed to do request: Head \"https://gcr.io/v2/google-containers/pause/manifests/latest\": dial tcp 173.194.203.82:443: i/o timeout",
+    "count": 2,
+    "first_time": "2026-09-18 06:55:43+00:00",
+    "last_time": "2026-09-18 08:12:44+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Warning",
+    "reason": "BackOff",
+    "message": "Back-off restarting failed container email in pod email-7699887dd9-rnbxw_otel-demo(c9cf2589-71fd-45ed-bb7c-39ada7acd0a9)",
+    "count": 5,
+    "first_time": "2026-09-18 06:56:53+00:00",
+    "last_time": "2026-09-18 08:15:29+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  },
+  {
+    "type": "Warning",
+    "reason": "Failed",
+    "message": "Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull and unpack image \"gcr.io/google-containers/pause:latest\": failed to resolve reference \"gcr.io/google-containers/pause:latest\": failed to do request: Head \"https://gcr.io/v2/google-containers/pause/manifests/latest\": dial tcp 173.194.43.82:443: i/o timeout",
+    "count": 2,
+    "first_time": "2026-09-18 08:11:28+00:00",
+    "last_time": "2026-09-18 08:13:38+00:00",
+    "involved_object_name": "email-7699887dd9-rnbxw"
+  }
+]

@@ -1,0 +1,198 @@
+[
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?frontend\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?frontend\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?cart\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?cart\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?checkout\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?checkout\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?currency\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?currency\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?email\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?email\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?payment\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?payment\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?product-catalog\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?product-catalog\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?recommendation\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": [
+      {
+        "stream": {
+          "detected_level": "ERROR",
+          "instance": "96b29f56-175b-41f4-9653-721af2a1068c",
+          "job": "opentelemetry-demo/recommendation",
+          "level": "ERROR",
+          "service_name": "opentelemetry-demo/recommendation"
+        },
+        "values": [
+          [
+            "1789715322732627200",
+            "{\"body\":\"Exception calling application: \\u003c_InactiveRpcError of RPC that terminated with:\\n\\tstatus = StatusCode.INTERNAL\\n\\tdetails = \\\"failed to load products: failed to query products: dial tcp: lookup astronomy-db on 10.96.0.10:53: dial udp 10.96.0.10:53: i/o timeout\\\"\\n\\tdebug_error_string = \\\"INTERNAL:failed to load products: failed to query products: dial tcp: lookup astronomy-db on 10.96.0.10:53: dial udp 10.96.0.10:53: i/o timeout\\\"\\n\\u003e\",\"severity\":\"ERROR\",\"attributes\":{\"exception.message\":\"\\u003cgrpc._channel._RPCState object at 0x7d03b705b790\\u003e\",\"exception.stacktrace\":\"Traceback (most recent call last):\\n  File \\\"/venv/lib/python3.14/site-packages/grpc/_server.py\\\", line 608, in _call_behavior\\n    response_or_iterator = behavior(argument, context)\\n  File \\\"/venv/lib/python3.14/site-packages/opentelemetry/instrumentation/grpc/_server.py\\\", line 305, in telemetry_interceptor\\n    raise error\\n  File \\\"/venv/lib/python3.14/site-packages/opentelemetry/instrumentation/grpc/_server.py\\\", line 296, in telemetry_interceptor\\n    return behavior(request_or_iterator, context)\\n  File \\\"/app/recommendation_server.py\\\", line 44, in ListRecommendations\\n    prod_list = get_product_list(request.product_ids)\\n  File \\\"/app/recommendation_server.py\\\", line 95, in get_product_list\\n    cat_response = product_catalog_stub.ListProducts(demo_pb2.Empty())\\n  File \\\"/venv/lib/python3.14/site-packages/opentelemetry/instrumentation/grpc/grpcext/_interceptor.py\\\", line 57, in __call__\\n    return self._interceptor.intercept_unary(\\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^\\n        request, metadata, client_info, invoker\\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n    )\\n    ^\\n  File \\\"/venv/lib/python3.14/site-packages/opentelemetry/instrumentation/grpc/_client.py\\\", line 185, in intercept_unary\\n    return self._intercept(request, metadata, client_info, invoker)\\n           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"/venv/lib/python3.14/site-packages/opentelemetry/instrumentation/grpc/_client.py\\\", line 166, in _intercept\\n    raise exc\\n  File \\\"/venv/lib/python3.14/site-packages/opentelemetry/instrumentation/grpc/_client.py\\\", line 152, in _intercept\\n    result = invoker(request, metadata)\\n  File \\\"/venv/lib/python3.14/site-packages/opentelemetry/instrumentation/grpc/grpcext/_interceptor.py\\\", line 47, in invoker\\n    return self._base_callable(\\n           ~~~~~~~~~~~~~~~~~~~^\\n        request,\\n        ^^^^^^^^\\n    ...\\u003c4 lines\\u003e...\\n        compression,\\n        ^^^^^^^^^^^^\\n    )\\n    ^\\n  File \\\"/venv/lib/python3.14/site-packages/grpc/_channel.py\\\", line 1159, in __call__\\n    return _end_unary_response_blocking(state, call, False, None)\\n  File \\\"/venv/lib/python3.14/site-packages/grpc/_channel.py\\\", line 990, in _end_unary_response_blocking\\n    raise _InactiveRpcError(state)  # pytype: disable=not-instantiable\\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\ngrpc._channel._InactiveRpcError: \\u003c_InactiveRpcError of RPC that terminated with:\\n\\tstatus = StatusCode.INTERNAL\\n\\tdetails = \\\"failed to load products: failed to query products: dial tcp: lookup astronomy-db on 10.96.0.10:53: dial udp 10.96.0.10:53: i/o timeout\\\"\\n\\tdebug_error_string = \\\"INTERNAL:failed to load products: failed to query products: dial tcp: lookup astronomy-db on 10.96.0.10:53: dial udp 10.96.0.10:53: i/o timeout\\\"\\n\\u003e\\n\",\"exception.type\":\"_InactiveRpcError\",\"otelServiceName\":\"recommendation\",\"otelSpanID\":\"0\",\"otelTraceID\":\"0\",\"otelTraceSampled\":false},\"resources\":{\"k8s.namespace.name\":\"otel-demo\",\"service.criticality\":\"medium\",\"service.instance.id\":\"96b29f56-175b-41f4-9653-721af2a1068c\",\"service.name\":\"recommendation\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.auto.version\":\"0.64b0\",\"telemetry.sdk.language\":\"python\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"1.43.0\"},\"instrumentation_scope\":{\"name\":\"grpc._server\"}}"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?recommendation\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?shipping\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?shipping\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?ad\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?ad\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?load-generator\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?load-generator\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?accounting\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?accounting\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?fraud-detection\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?fraud-detection\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?quote\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?quote\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?flagd\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?flagd\"} |~ \"(?i)warn\"",
+    "start": "2026-09-18T07:04:53.943661+00:00",
+    "end": "2026-09-18T07:11:56.157277+00:00",
+    "result": []
+  }
+]

@@ -1,0 +1,29 @@
+[
+  {
+    "type": "Normal",
+    "reason": "Pulled",
+    "message": "Container image \"ghcr.io/open-telemetry/demo:3.0.0-cart\" already present on machine and can be accessed by the pod",
+    "count": 2,
+    "first_time": "2026-09-16 06:59:36+00:00",
+    "last_time": "2026-09-16 08:04:13+00:00",
+    "involved_object_name": "cart-69bd7c567b-5ljxw"
+  },
+  {
+    "type": "Normal",
+    "reason": "Created",
+    "message": "Container created",
+    "count": 2,
+    "first_time": "2026-09-16 06:59:36+00:00",
+    "last_time": "2026-09-16 08:04:13+00:00",
+    "involved_object_name": "cart-69bd7c567b-5ljxw"
+  },
+  {
+    "type": "Normal",
+    "reason": "Started",
+    "message": "Container started",
+    "count": 2,
+    "first_time": "2026-09-16 06:59:36+00:00",
+    "last_time": "2026-09-16 08:04:13+00:00",
+    "involved_object_name": "cart-69bd7c567b-5ljxw"
+  }
+]

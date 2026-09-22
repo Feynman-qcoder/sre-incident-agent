@@ -1,0 +1,90 @@
+{
+  "incident_id": "frontend-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T06:01:29.827246+00:00",
+  "investigation_end_ts": "2026-09-18T06:01:59.451966+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "pod_crash",
+      "description": "The frontend container was terminated ('Killing: Stopping container frontend') and replaced by a freshly scheduled pod frontend-76cbddfbcc-zm8l8, causing a collapse of frontend server request rate (p50 dropped to ~8 from a mean of ~148). No downstream service shows elevated errors, so the disruption originates at the frontend pod itself, consistent with a container crash/restart.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Stopping container frontend (count=1)",
+          "observed_value": "count=1 within incident window",
+          "expected_baseline": "no container-kill events for frontend during steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Scheduled: Successfully assigned otel-demo/frontend-76cbddfbcc-zm8l8 to otel-sre-copilot-control-plane (count=1)",
+          "observed_value": "fresh pod frontend-76cbddfbcc-zm8l8 Scheduled/Created/Started",
+          "expected_baseline": "no new frontend pod creation during steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate anomaly: p50=8.009 vs mean=148.190 (max=604.823)",
+          "expected_baseline": "steady frontend server request rate ~148/s with no collapse"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend server p99 latency is elevated (~6.1 s p50 of the quantile series, up to 7.9 s) during the window, which could reflect requests stalled while the pod was being killed/replaced; however no latency anomaly flag was raised and error rate stayed flat, making this a secondary/derived symptom rather than the primary fault.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=6130.886, max=7890.000 (no anomaly flagged)",
+          "expected_baseline": "frontend p99 latency in low hundreds of ms during steady state"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "A downstream dependency failure was considered because frontend calls checkout, cart, recommendation, product-catalog, shipping, currency and ad; however error_rate for checkout (0.004), product-catalog (0.000) and recommendation (0.000) all remained at baseline, so a downstream-triggered failure is not supported.",
+      "confidence": 0.08,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate mean=0.004 (max 0.019)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "product-catalog error_rate = 0.000",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "recommendation error_rate = 0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm frontend pod restart/crash: kubectl -n otel-demo get pods -l app=frontend and kubectl describe pod frontend-76cbddfbcc-zm8l8 (inspect Last State, Reason, Exit Code).",
+    "Inspect the terminated frontend container's previous logs (kubectl logs <prior-frontend-pod> --previous) to distinguish OOMKill, liveness-probe kill, or application crash.",
+    "Review frontend resource requests/limits and liveness/readiness probe thresholds; increase memory limit or relax probe timeouts if a kill was probe- or OOM-driven.",
+    "Verify downstream calls (checkout, cart, recommendation, product-catalog) remained healthy and add pod-restart alerting on frontend to catch recurrence early."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 29.62472,
+  "cost_usd": 0.00389515,
+  "total_prompt_tokens": 6752,
+  "total_completion_tokens": 1459,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

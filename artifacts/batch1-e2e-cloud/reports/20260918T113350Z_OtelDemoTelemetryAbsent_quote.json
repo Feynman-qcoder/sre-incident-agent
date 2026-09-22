@@ -1,0 +1,97 @@
+{
+  "incident_id": "watchdog-OtelDemoTelemetryAbsent-3fa4f1b3",
+  "investigation_start_ts": "2026-09-18T11:33:12.599330+00:00",
+  "investigation_end_ts": "2026-09-18T11:33:50.035715+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "dependency_failure",
+      "description": "Telemetry is entirely absent across the call graph (all request/error rates flat at 0), and product-catalog is the heavily-depended-on leaf (frontend, checkout, recommendation all call it), so its stall/failure best explains a total telemetry blackout. No CPU, restart, log, or event corroboration exists, so confidence is low.",
+      "confidence": 0.35,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 flat (p50=p95=p99=max=0.000) across 10:50–11:33",
+          "expected_baseline": "request_rate > 0 req/s under continuous load-generator traffic"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage≈0.001 cores (flat, no anomaly)",
+          "expected_baseline": "~2.0 cores if cpu_stress (per prior incidents)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 flat",
+          "expected_baseline": "error_rate < 0.01 with non-zero request_rate"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "pod_crash",
+      "description": "A crashed/unavailable product-catalog pod would explain loss of all request telemetry from the dependency-heavy leaf, but zero restart counts and no K8s events contradict a crash.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0.000 flat",
+          "expected_baseline": "0 under healthy operation; increase expected on crash"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, since_seconds=3000)",
+          "observed_value": "[no K8s events found]",
+          "expected_baseline": "BackOff/OOMKilled/Unhealthy events on pod crash"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "unknown",
+      "description": "Frontend, the entry point for all load-generator traffic, also reports zero request and error telemetry, consistent with a telemetry-pipeline (OTel collector) outage rather than a single service fault; classified unknown due to absence of any span/log/event signal.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 flat",
+          "expected_baseline": "frontend error_rate < 0.01 with non-zero request_rate under load"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 flat",
+          "expected_baseline": "frontend serves all ingress traffic; should be > 0"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{namespace=\"otel-demo\"} |= \"error\"",
+          "observed_value": "[no logs found]",
+          "expected_baseline": "continuous application log stream from otel-demo services"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Verify the OTel Collector / telemetry pipeline is running and scraping; check collector pod health and exporter connectivity for otel-demo.",
+    "Confirm product-catalog pod status: kubectl get pods -n otel-demo -l app.kubernetes.io/name=product-catalog and kubectl top pod to compare CPU against requests/limits.",
+    "If a cpu_stress/dependency fault is injected against product-catalog, stop the chaos/flagd fault injection to relieve starvation.",
+    "Restart product-catalog and any stalled upstream (frontend, checkout, recommendation) if readiness probes have failed, then confirm request/error telemetry resumes.",
+    "Re-check request_rate and error_rate for product-catalog and frontend to confirm telemetry restoration."
+  ],
+  "fault_type_classification": "dependency_failure",
+  "grounding_score": 0.6,
+  "latency_s": 37.436385,
+  "cost_usd": 0.0041048,
+  "total_prompt_tokens": 6181,
+  "total_completion_tokens": 1849,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

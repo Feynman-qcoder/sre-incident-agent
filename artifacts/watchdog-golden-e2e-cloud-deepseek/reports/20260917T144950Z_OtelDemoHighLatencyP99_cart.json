@@ -1,0 +1,84 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-b47b613b",
+  "investigation_start_ts": "2026-09-17T14:49:26.088447+00:00",
+  "investigation_end_ts": "2026-09-17T14:49:50.654075+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "high_latency",
+      "description": "Cart service shows a sharp p99 latency spike (~72ms, p50 ~3ms) during the incident window while all peer leaf services remained at ~2-10ms. No error-rate increase, CPU/memory pressure, or pod crashes were observed, indicating an injected latency fault localized to cart.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=72.157ms, max=74.424ms, mean=19.994ms (p50=3.11ms) with anomaly detected",
+          "expected_baseline": "p99 ~2-10ms (peers currency/payment/shipping=1.98ms, product-catalog=9.6ms, recommendation=4.97ms)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "128bd6d780126db8",
+          "observed_value": "cart 'order-consumed' span at 23674ms; search_traces service_name=cart min_duration_ms=50 returned 16 traces, p95_duration=3160787ms, 0 errors",
+          "expected_baseline": "cart server spans normally single-digit ms; no errors expected"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Started: Container started (count=3)",
+          "observed_value": "cart pod container started 3x; no OOMKilled/BackOff/FailedMount events",
+          "expected_baseline": "stable single running container with no unexpected restarts/crashes"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout p99 (~48ms) is elevated relative to leaf services, but this is attributable to it calling the slow cart service downstream rather than an intrinsic checkout fault.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=47.794ms, max=48.75ms, mean=29.63ms",
+          "expected_baseline": "p99 ~2-10ms for leaf services"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend p99 (~47.76ms) is mildly elevated, consistent with propagating upstream latency from checkout/cart rather than a frontend-local fault; error rate remained 0.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=47.76ms, max=47.812ms, mean=33.33ms",
+          "expected_baseline": "p99 ~2-10ms for leaf services"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect cart service for injected latency (e.g., flagd feature flag / chaos latency injection targeting cart) and disable the fault flag.",
+    "Verify cart application-level processing time and any downstream/store calls for added delays; compare cart span durations against historical baseline.",
+    "Monitor cart p99 latency after remediation to confirm return to ~2-3ms and ensure upstream checkout/frontend latency normalizes.",
+    "Add alerting on per-service p99 latency deviations to catch localized latency injections earlier."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.9,
+  "latency_s": 24.565628,
+  "cost_usd": 0.00373275,
+  "total_prompt_tokens": 6279,
+  "total_completion_tokens": 1462,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

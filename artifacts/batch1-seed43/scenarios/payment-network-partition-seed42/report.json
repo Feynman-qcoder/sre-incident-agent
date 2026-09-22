@@ -1,0 +1,108 @@
+{
+  "incident_id": "payment-network-partition-seed42",
+  "investigation_start_ts": "2026-09-18T09:26:42.968278+00:00",
+  "investigation_end_ts": "2026-09-18T09:27:25.471972+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "dependency_failure",
+      "description": "A network partition isolating the payment service prevents checkout's outbound gRPC call to payment from ever completing, so the frontend request chain blocks until its 10s deadline. Because the fault is at the network boundary, payment emits no completed or errored server spans, leaving its own server-side error_rate (0) and resource metrics normal.",
+      "confidence": 0.65,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms (mean=p50=p95=p99=max=10000.000)",
+          "expected_baseline": "frontend p99 < 200 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 (payment emits zero server spans during the window)",
+          "expected_baseline": "payment server request_rate > 0 (normal call volume from checkout)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no errored server spans — boundary fault, not an application error)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.010 cores (normal, no resource stress)",
+          "expected_baseline": "cpu_usage ~0.01 (steady-state)"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Successfully update ObservedGeneration and FailedMessage of resource",
+          "observed_value": "payment pod events show only flagd flag reconciliation (count=1); no OOMKilled/BackOff/CrashLoop",
+          "expected_baseline": "no crash/restart events during steady state"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=checkout min_duration_ms=9000",
+          "observed_value": "[no traces found] — checkout emits no spans while blocked on payment",
+          "expected_baseline": "checkout spans present with sub-second durations"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "payment",
+      "fault_type": "http_abort",
+      "description": "Alternative interpretation: an HTTP-boundary abort injected on payment (via the flagd flag observed in pod events) causes checkout's call to payment to never return normally, producing the same 10s deadline saturation without payment emitting any server span.",
+      "confidence": 0.22,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 — an HTTP-boundary abort leaves payment with no completed/errored server span",
+          "expected_baseline": "payment server request_rate > 0"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Successfully update ObservedGeneration and FailedMessage of resource",
+          "observed_value": "flagd controller reconciled a flag on payment pods (count=1)",
+          "expected_baseline": "no flag change during steady state"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout is the immediate upstream that blocks on the payment dependency and also emits no server spans during the window, so it appears as a latency victim rather than the origin of the fault.",
+      "confidence": 0.13,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 (checkout emits no server spans)",
+          "expected_baseline": "checkout server request_rate > 0"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (blocked, not erroring)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect and remove/roll back the NetworkPolicy or partition injection isolating the payment pods in namespace otel-demo to restore network connectivity between checkout and payment.",
+    "Disable / roll back the flagd flag that toggled the fault on the payment service (the only k8s activity observed was the flagd flag reconciliation on payment pods).",
+    "Restart the payment deployment pods to clear stuck/aborted connection state and re-establish checkout→payment gRPC channels.",
+    "Verify connectivity with a probe from checkout to payment (gRPC call completes well under the 10s deadline) and confirm frontend p99 latency returns below its <200ms baseline while checkout/payment server request rates recover above zero."
+  ],
+  "fault_type_classification": "dependency_failure",
+  "grounding_score": 1.0,
+  "latency_s": 42.503694,
+  "cost_usd": 0.0021675,
+  "total_prompt_tokens": 7286,
+  "total_completion_tokens": 1791,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

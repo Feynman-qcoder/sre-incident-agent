@@ -1,0 +1,302 @@
+{
+  "batches": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "container.id",
+            "value": {
+              "stringValue": "a7a50e32aa6d63a5d7ab30942752e5ac97657e5176f0aec56747561df01bf105"
+            }
+          },
+          {
+            "key": "host.arch",
+            "value": {
+              "stringValue": "amd64"
+            }
+          },
+          {
+            "key": "host.name",
+            "value": {
+              "stringValue": "accounting-797cf57494-q22sj"
+            }
+          },
+          {
+            "key": "os.build_id",
+            "value": {
+              "stringValue": "6.8.0-138-generic"
+            }
+          },
+          {
+            "key": "os.description",
+            "value": {
+              "stringValue": "Ubuntu 24.04.4 LTS"
+            }
+          },
+          {
+            "key": "os.name",
+            "value": {
+              "stringValue": "Ubuntu"
+            }
+          },
+          {
+            "key": "os.type",
+            "value": {
+              "stringValue": "linux"
+            }
+          },
+          {
+            "key": "os.version",
+            "value": {
+              "stringValue": "24.04"
+            }
+          },
+          {
+            "key": "process.owner",
+            "value": {
+              "stringValue": "app"
+            }
+          },
+          {
+            "key": "process.pid",
+            "value": {
+              "intValue": "1"
+            }
+          },
+          {
+            "key": "process.runtime.description",
+            "value": {
+              "stringValue": ".NET 10.0.10"
+            }
+          },
+          {
+            "key": "process.runtime.name",
+            "value": {
+              "stringValue": ".NET"
+            }
+          },
+          {
+            "key": "process.runtime.version",
+            "value": {
+              "stringValue": "10.0.10"
+            }
+          },
+          {
+            "key": "service.criticality",
+            "value": {
+              "stringValue": "low"
+            }
+          },
+          {
+            "key": "service.instance.id",
+            "value": {
+              "stringValue": "f01e20de-8763-4047-879e-11c3773ad9a1"
+            }
+          },
+          {
+            "key": "service.namespace",
+            "value": {
+              "stringValue": "opentelemetry-demo"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "2.2.0"
+            }
+          },
+          {
+            "key": "telemetry.distro.name",
+            "value": {
+              "stringValue": "opentelemetry-dotnet-instrumentation"
+            }
+          },
+          {
+            "key": "telemetry.distro.version",
+            "value": {
+              "stringValue": "1.15.0"
+            }
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "dotnet"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.15.3"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "accounting"
+            }
+          },
+          {
+            "key": "k8s.namespace.name",
+            "value": {
+              "stringValue": "otel-demo"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "OpenTelemetry.AutoInstrumentation.Kafka",
+            "version": "1.15.0"
+          },
+          "spans": [
+            {
+              "traceId": "NGffY4YC1jJ3a0987DAllA==",
+              "spanId": "afzjHSb4V/A=",
+              "parentSpanId": "zKUOpx47BBE=",
+              "name": "orders receive",
+              "kind": "SPAN_KIND_CONSUMER",
+              "startTimeUnixNano": "1789545794571533500",
+              "endTimeUnixNano": "1789545794585406200",
+              "attributes": [
+                {
+                  "key": "messaging.client_id",
+                  "value": {
+                    "stringValue": "rdkafka#consumer-1"
+                  }
+                },
+                {
+                  "key": "messaging.kafka.consumer.group",
+                  "value": {
+                    "stringValue": "accounting"
+                  }
+                },
+                {
+                  "key": "messaging.operation",
+                  "value": {
+                    "stringValue": "receive"
+                  }
+                },
+                {
+                  "key": "messaging.system",
+                  "value": {
+                    "stringValue": "kafka"
+                  }
+                },
+                {
+                  "key": "messaging.destination.name",
+                  "value": {
+                    "stringValue": "orders"
+                  }
+                },
+                {
+                  "key": "messaging.kafka.destination.partition",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "messaging.kafka.message.offset",
+                  "value": {
+                    "intValue": "198"
+                  }
+                }
+              ],
+              "links": [
+                {
+                  "traceId": "YGFTdAUVA13OPQue/k+5kg==",
+                  "spanId": "ohEx6dkpx8s="
+                }
+              ],
+              "status": {}
+            }
+          ]
+        },
+        {
+          "scope": {
+            "name": "Npgsql",
+            "version": "10.0.3+d3768398c17877b3a916c3c4d87e8e11698991fc"
+          },
+          "spans": [
+            {
+              "traceId": "NGffY4YC1jJ3a0987DAllA==",
+              "spanId": "JNrvMYbrVf0=",
+              "parentSpanId": "zKUOpx47BBE=",
+              "name": "postgresql",
+              "kind": "SPAN_KIND_CLIENT",
+              "startTimeUnixNano": "1789545794585996800",
+              "endTimeUnixNano": "1789545794587019600",
+              "attributes": [
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO accounting.\"order\" (order_id)\nVALUES (@p0);\nINSERT INTO accounting.orderitem (order_id, product_id, item_cost_currency_code, item_cost_nanos, item_cost_units, quantity)\nVALUES (@p1, @p2, @p3, @p4, @p5, @p6);\nINSERT INTO accounting.shipping (shipping_tracking_id, city, country, order_id, shipping_cost_currency_code, shipping_cost_nanos, shipping_cost_units, state, street_address, zip_code)\nVALUES (@p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16);\n"
+                  }
+                },
+                {
+                  "key": "db.system.name",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.namespace",
+                  "value": {
+                    "stringValue": "astronomy_db"
+                  }
+                },
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "astronomy-db"
+                  }
+                },
+                {
+                  "key": "db.npgsql.data_source",
+                  "value": {
+                    "stringValue": "Host=astronomy-db;Username=astronomy_user;Database=astronomy_db"
+                  }
+                },
+                {
+                  "key": "db.npgsql.connection_id",
+                  "value": {
+                    "intValue": "1941"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1789545794587004000",
+                  "name": "received-first-response"
+                }
+              ],
+              "status": {}
+            }
+          ]
+        },
+        {
+          "scope": {
+            "name": "Accounting.Consumer"
+          },
+          "spans": [
+            {
+              "traceId": "NGffY4YC1jJ3a0987DAllA==",
+              "spanId": "zKUOpx47BBE=",
+              "name": "order-consumed",
+              "kind": "SPAN_KIND_INTERNAL",
+              "startTimeUnixNano": "1789545775943879000",
+              "endTimeUnixNano": "1789545794587793200",
+              "status": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "incident_id": "payment-http_abort-seed42",
+  "investigation_start_ts": "2026-09-18T05:50:59.737916+00:00",
+  "investigation_end_ts": "2026-09-18T05:52:17.566512+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "http_abort",
+      "description": "The payment service is aborting/timing out the gRPC calls checkout makes to it, so checkout blocks on payment for ~10s per order and both services' throughput collapses in lockstep. Aborted calls terminate at the client, so payment records only the few fast successful server spans while checkout surfaces the impact as a 10s timeout.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.010/s, max=0.038/s (payment traffic collapsed)",
+          "expected_baseline": "several req/s — payment is called on every checkout order"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.010/s, max=0.038/s (checkout throughput collapsed in lockstep with payment)",
+          "expected_baseline": "≈ frontend inbound rate (~6.5 req/s)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=p95=p99=10000 ms, mean=9161 ms — checkout blocked ~10s (timeout) per request",
+          "expected_baseline": "p99 < 100 ms (cart=4.8ms, shipping=9.8ms, currency=2.0ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 — aborts do not surface as payment SERVER error spans",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout is failing/blocking on its downstream payment dependency: its server latency saturates at the 10s client timeout and its request rate collapses, propagating latency upstream to the frontend order path.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000 ms (mean=9161 ms), p50=10000 ms",
+          "expected_baseline": "p99 < 100 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p95=p99=10000 ms (mean=4254 ms) on the frontend order path",
+          "expected_baseline": "frontend p50 ≈ 46 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "Product-catalog also exhibits a 10s tail (mean 4014 ms) shared by its callers (frontend, checkout, recommendation). Could be an independent latency fault or downstream propagation along the same request path.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p95=p99=10000 ms (mean=4014 ms, p50=23.5 ms)",
+          "expected_baseline": "p99 < 100 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p95=p99=10000 ms (mean=4005 ms) — recommendation calls product-catalog",
+          "expected_baseline": "p99 < 100 ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Roll back / disable the payment fault-injection feature flag (http_abort) for the payment service in flagd; verify payment gRPC requests complete again.",
+    "Confirm payment pod health and connectivity (restarts=0, CPU 0.007, mem ~197MB) and check for aborted/reset connections from checkout to payment.",
+    "Restore checkout order throughput: validate checkout→payment calls succeed and checkout p99 latency returns below 100 ms.",
+    "Add alerting on checkout p99 latency and on lockstep request-rate collapse between checkout and payment to catch future abort faults early.",
+    "Re-check frontend order endpoint after payment recovers to confirm the 10s tail clears."
+  ],
+  "fault_type_classification": "http_abort",
+  "grounding_score": 1.0,
+  "latency_s": 77.828596,
+  "cost_usd": 0.0050911,
+  "total_prompt_tokens": 9806,
+  "total_completion_tokens": 1580,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

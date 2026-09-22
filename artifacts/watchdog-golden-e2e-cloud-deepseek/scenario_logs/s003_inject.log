@@ -1,0 +1,12 @@
+2026-09-17 22:17:07 [info     ] injecting_fault                dry_run=False fault_service=payment fault_type=http_abort scenario_id=payment-http_abort-seed42
+2026-09-17 22:17:07 [info     ] waiting_for_fault_duration     seconds=300
+2026-09-17 22:22:07 [info     ] snapshotting_telemetry         end=2026-09-17T14:23:07.591247+00:00 start=2026-09-17T14:16:07.349891+00:00
+2026-09-17 22:22:07 [info     ] snapshotting_metrics           services=15
+2026-09-17 22:22:08 [info     ] snapshotting_traces            services=15
+2026-09-17 22:22:09 [info     ] fetching_full_traces           count=5
+2026-09-17 22:22:09 [info     ] snapshotting_logs              services=15
+2026-09-17 22:22:09 [info     ] snapshotting_k8s_events        namespace=otel-demo
+2026-09-17 22:22:09 [info     ] snapshot_complete              output_dir=snapshots/payment-http_abort-seed42
+2026-09-17 22:22:09 [info     ] snapshot_validation_pass       baseline_value=0.0468 fault_over_baseline=0.407 fault_type=http_abort fault_value=0.019 service=payment signal=request_rate
+2026-09-17 22:22:09 [info     ] ground_truth_written           path=snapshots/payment-http_abort-seed42/ground_truth.json validation_passed=True
+2026-09-17 22:22:09 [info     ] injection_complete             output_dir=snapshots/payment-http_abort-seed42 scenario_id=payment-http_abort-seed42

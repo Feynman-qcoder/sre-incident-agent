@@ -1,0 +1,91 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-3a0d3ec3",
+  "investigation_start_ts": "2026-09-18T09:01:12.599799+00:00",
+  "investigation_end_ts": "2026-09-18T09:02:04.794901+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog, a leaf service, exhibits sustain~10s server-side latency (p50=p95=p99=10000ms) with no error logs, injecting 10-15s timeouts that propagate up through recommendation to frontend, producing the frontend error/timeout spike seen by the watchdog.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000 mean=8350.864",
+          "expected_baseline": "p99 < ~100ms during steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=10000.000 p95=10000.000 p99=10000.000 mean=9954.789 (propagated from product-catalog)",
+          "expected_baseline": "p99 < ~200ms during steady state"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"product-catalog\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "no error logs; confirms slow-but-not-failing latency fault"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "recommendation shows identical 10s p99 latency, but as an upstream caller of the slow product-catalog it reflects propagated latency rather than an independent fault.",
+      "confidence": 0.45,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000ms mean=9954.789ms",
+          "expected_baseline": "p99 < ~200ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "28181dfe8bb3256b",
+          "observed_value": "user_get_recommendations | 15000ms | ok",
+          "expected_baseline": "recommendation < ~200ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "email",
+      "fault_type": "pod_crash",
+      "description": "email container shows restart/back-off events and a restart-rate bump, but this is a low-impact secondary issue (checkout error rate stayed ~0.004) and does not explain the frontend error spike.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off restarting failed container email in pod email-7699887dd9-rnbxw_otel-demo(c9cf2589-71fd-45ed-bb7c-39ada7acd0a9) (count=5)",
+          "observed_value": "email container restart/back-off; 'Killing: Container email definition changed, will be restarted' (count=2)",
+          "expected_baseline": "0 container restarts during steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum by (service_name) (increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\"}[5m]))",
+          "observed_value": "mean=0.056 p95=0.952 p99=1.111 max=1.111, anomaly [1789707775→1789719625]",
+          "expected_baseline": "restart increase = 0"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog deployment/config for an injected latency (e.g. flagd latency flag or fault-injection) and disable it; check recent rollouts/config maps.",
+    "Restart or roll back product-catalog pods and confirm p99 latency returns to baseline via histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le)).",
+    "Verify frontend recovery: sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) and frontend trace p95 drop back to normal.",
+    "Add/raise client timeouts and retries between frontend→recommendation→product-catalog to bound blast radius.",
+    "Separately investigate the email pod restart/back-off loop (image pull/config change) as an independent cleanup item."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.7,
+  "latency_s": 52.195102,
+  "cost_usd": 0.0037418499999999997,
+  "total_prompt_tokens": 6251,
+  "total_completion_tokens": 1480,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

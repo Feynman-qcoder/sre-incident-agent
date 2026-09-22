@@ -1,0 +1,198 @@
+[
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?frontend\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?frontend\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?cart\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?cart\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": [
+      {
+        "stream": {
+          "detected_level": "WARN",
+          "instance": "8f0fe97e-7dde-430a-86ee-99defd6c3d7f",
+          "job": "opentelemetry-demo/cart",
+          "level": "WARN",
+          "service_name": "opentelemetry-demo/cart"
+        },
+        "values": [
+          [
+            "1789545854001150700",
+            "{\"body\":\"Overriding HTTP_PORTS '{http}' and HTTPS_PORTS '{https}'. Binding to values defined by URLS instead '{urls}'.\",\"severity\":\"Warning\",\"attributes\":{\"http\":\"8080\",\"https\":\"\",\"urls\":\"http://*:8080\"},\"resources\":{\"container.id\":\"7ecb9e75916f8f0b9bf683d84eae70b747d87059e44ca474ee10e60be6a38ba6\",\"host.arch\":\"amd64\",\"host.name\":\"cart-69bd7c567b-5ljxw\",\"k8s.namespace.name\":\"otel-demo\",\"service.criticality\":\"high\",\"service.instance.id\":\"8f0fe97e-7dde-430a-86ee-99defd6c3d7f\",\"service.name\":\"cart\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"dotnet\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"1.15.3\"},\"instrumentation_scope\":{\"name\":\"Microsoft.AspNetCore.Hosting.Diagnostics\"}}"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?checkout\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?checkout\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?currency\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?currency\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?email\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?email\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?payment\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?payment\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?product-catalog\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?product-catalog\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?recommendation\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?recommendation\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?shipping\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?shipping\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?ad\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?ad\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?load-generator\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?load-generator\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?accounting\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?accounting\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?fraud-detection\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?fraud-detection\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?quote\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?quote\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?flagd\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?flagd\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:03:12.954977+00:00",
+    "end": "2026-09-16T08:10:13.183568+00:00",
+    "result": []
+  }
+]

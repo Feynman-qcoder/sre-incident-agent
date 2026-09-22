@@ -1,0 +1,9 @@
+# 来源声明（add-local-demo-pack D3：不造数——真实告警的子集剪辑）：
+# 本文件是 artifacts/oncall-e2e-cloud/oc_e2e_wd.log（2026-09-18 12:57–13:02 的
+# watchdog E2E 实录）中 alert_seen 事件的忠实子集，每行 JSON = 一个轮次的告警数组，
+# 按 watchdog 实际观测的相对时序排列。labels/activeAt 均为实录原值。
+# 轮次 1：注入 001 后 CPU 风暴余波的延迟告警群（service="" 为实录原样——历史 pending 噪声形态）
+# 轮次 2：001 的 pod 告警同轮双告（KubePodNotReady + KubeDeploymentReplicasMismatch 同服务——同轮去重素材）
+# 轮次 3：白名单外噪声（KubeContainerWaiting——实录 18:32 出现的过滤对象，alert_filtered 原样）
+[{"labels":{"alertname":"OtelDemoHighLatencyP99","namespace":"otel-demo","service_name":"frontend"},"state":"firing","activeAt":"2026-09-18T04:36:25.817543Z"},{"labels":{"alertname":"OtelDemoHighLatencyP99","namespace":"otel-demo"},"state":"firing","activeAt":"2026-09-18T04:36:25.817543Z"},{"labels":{"alertname":"OtelDemoHighLatencyP99","namespace":"otel-demo","service_name":"recommendation"},"state":"firing","activeAt":"2026-09-18T04:36:55.817543Z"},{"labels":{"alertname":"OtelDemoHighLatencyP99","namespace":"otel-demo","service_name":"flagd"},"state":"firing","activeAt":"2026-09-18T04:52:55.817543Z"},{"labels":{"alertname":"OtelDemoHighLatencyP99","namespace":"otel-demo","service_name":"ad"},"state":"firing","activeAt":"2026-09-18T04:57:25.817543Z"}]
+[{"labels":{"alertname":"KubePodNotReady","namespace":"otel-demo","pod":"checkout-5df89485f4-sjwdb"},"state":"firing","activeAt":"2026-09-18T04:59:19.685975Z"},{"labels":{"alertname":"KubeDeploymentReplicasMismatch","namespace":"otel-demo","deployment":"checkout"},"state":"firing","activeAt":"2026-09-18T04:59:35.685975Z"},{"labels":{"alertname":"KubeContainerWaiting","namespace":"otel-demo","pod":"checkout-5df89485f4-sjwdb"},"state":"firing","activeAt":"2026-09-18T04:59:40.185975Z"}]

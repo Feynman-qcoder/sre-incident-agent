@@ -1,0 +1,58 @@
+{
+ "ts": "2026-09-16T16:55:01.275695+00:00",
+ "p99_now_ms": {
+  "flagd": "NaN",
+  "frontend": "10000",
+  "image-provider": "NaN",
+  "ad": "NaN",
+  "shipping": "NaN",
+  "email": "NaN",
+  "frontend-proxy": "NaN",
+  "currency": "NaN",
+  "cart": "NaN",
+  "recommendation": "NaN",
+  "checkout": "NaN",
+  "product-catalog": "NaN",
+  "payment": "NaN",
+  "quote": "NaN"
+ },
+ "p99_ref_ms": {
+  "image-provider": "NaN",
+  "cart": "NaN",
+  "product-catalog": "NaN",
+  "payment": "NaN",
+  "quote": "NaN",
+  "flagd": "NaN",
+  "frontend": "10000",
+  "recommendation": "NaN",
+  "ad": "NaN",
+  "checkout": "NaN",
+  "shipping": "NaN",
+  "email": "NaN",
+  "frontend-proxy": "NaN",
+  "currency": "NaN"
+ },
+ "ratio": {
+  "payment": "NaN",
+  "quote": "NaN",
+  "shipping": "NaN",
+  "email": "NaN",
+  "flagd": "NaN",
+  "frontend-proxy": "NaN",
+  "frontend": "1",
+  "currency": "NaN",
+  "image-provider": "NaN",
+  "recommendation": "NaN",
+  "ad": "NaN",
+  "checkout": "NaN",
+  "cart": "NaN",
+  "product-catalog": "NaN"
+ },
+ "error_ratio": {
+  "flagd": "NaN",
+  "frontend": "0.04354779013148087",
+  "frontend-proxy": "NaN",
+  "checkout": "NaN",
+  "payment": "NaN"
+ }
+}

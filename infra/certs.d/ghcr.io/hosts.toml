@@ -1,0 +1,15 @@
+# containerd registry hosts config for ghcr.io
+# Used by kind node containerd (containerd 2.x, config_path mode).
+# ghcr.io is NOT covered by Docker's `registry-mirrors` -- a per-registry
+# mirror like this is the only way to accelerate it.
+#
+# Measured on Aliyun Hangzhou ECS, 2026-09-16 (same instance, same NIC):
+#   ghcr.io direct          -> ~54 KB/s      (unusable)
+#   ghcr.m.daocloud.io      -> ~50-59 KB/s   (unusable, 39m37s for 1 layer)
+#   ghcr.nju.edu.cn         -> ~10.4 MB/s (peak 12.5), demo frontend done in ~20s
+#   -> Only the njau mirror is listed; daocloud's ghcr path is dead.
+
+server = "https://ghcr.io"
+
+[host."https://ghcr.nju.edu.cn"]
+  capabilities = ["pull", "resolve"]

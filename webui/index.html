@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRE 事故诊断 Agent · 技术审计手册</title>
+<script src="bundle.js" data-bundle="1"></script>
+<style>
+:root{
+  --paper:#F6F5F1; --panel:#FCFBF8; --ink:#23221F; --dim:#6B6A64;
+  --grid:#DAD7CE; --accent:#14375C; --fault:#A32D2D; --warn:#854F0B; --ok:#0F6E56;
+  --mono:"IBM Plex Mono",Consolas,"Courier New",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);
+  font:14px/1.55 "IBM Plex Sans","Source Han Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif;}
+.refresh-btn{position:fixed;top:10px;right:16px;z-index:99;border:0.5px solid var(--grid);
+  background:var(--panel);color:var(--dim);font-family:var(--mono);font-size:11.5px;
+  padding:4px 12px;cursor:pointer;border-radius:4px}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+.refresh-btn.busy{opacity:0.5;pointer-events:none}
+.mono{font-family:var(--mono)}
+#app{display:grid;grid-template-columns:48px 1fr;min-height:100vh}
+/* ── 左侧导航（48px 图标条）── */
+nav{border-right:0.5px solid var(--grid);display:flex;flex-direction:column;background:var(--panel)}
+nav .logo{height:56px;display:flex;align-items:center;justify-content:center;
+  border-bottom:0.5px solid var(--grid);font-family:var(--mono);font-weight:700;color:var(--accent)}
+nav button{border:0;background:none;cursor:pointer;padding:14px 0;writing-mode:vertical-rl;
+  letter-spacing:0.35em;font-size:13px;color:var(--dim);
+  font-family:"Source Han Serif SC","Noto Serif SC",serif}
+nav button.active{color:var(--accent);background:var(--paper);
+  border-left:2px solid var(--accent);border-right:-2px solid var(--accent)}
+/* ── 主区 ── */
+main{padding:0 32px 40px;max-width:1280px}
+header.top{height:56px;border-bottom:0.5px solid var(--grid);display:flex;align-items:center;
+  justify-content:space-between;margin-bottom:24px}
+header.top .title{font-size:15px;font-weight:600}
+header.top .meta{font-family:var(--mono);font-size:11px;color:var(--dim)}
+h2{font-size:22px;margin:20px 0 12px;font-weight:600}
+h3{font-size:15px;margin:16px 0 8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--panel)}
+th,td{border:0.5px solid var(--grid);padding:6px 10px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper);font-size:11.5px;color:var(--dim);
+  text-transform:uppercase;letter-spacing:0.04em}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:1px 7px;
+  border:0.5px solid var(--grid);border-radius:4px;background:var(--paper);margin-right:4px}
+.badge.acc{color:var(--accent);border-color:var(--accent)}
+.badge.warn{color:var(--warn);border-color:var(--warn)}
+.badge.ok{color:var(--ok);border-color:var(--ok)}
+.badge.fault{color:var(--fault);border-color:var(--fault)}
+.warn-fixed{background:#F5EDE0;border:0.5px solid var(--warn);padding:10px 14px;margin:10px 0;
+  font-size:12.5px}
+.warn-fixed .h{color:var(--warn);font-weight:700;font-size:11px;letter-spacing:0.06em}
+.blurred{filter:blur(5px);user-select:none;cursor:pointer}
+.gt-toggle{font-family:var(--mono);font-size:11px;color:var(--accent);cursor:pointer;
+  border-bottom:1px dashed var(--accent)}
+/* 调查台三栏 */
+.grid3{display:grid;grid-template-columns:1.3fr 3.5fr 2.5fr;gap:0;border:0.5px solid var(--grid);
+  background:var(--panel)}
+.col{padding:16px;border-right:0.5px solid var(--grid)}
+.col:last-child{border-right:0}
+.hypo{border-left:2px solid var(--grid);padding:8px 12px;margin-bottom:10px}
+.hypo.r1{border-left-width:2px;border-left-color:var(--accent)}
+.hypo .rank{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--accent)}
+.hypo .svc{font-weight:600;margin-left:8px}
+.hypo .conf{float:right;font-family:var(--mono);color:var(--dim)}
+.evchip{display:inline-block;font-family:var(--mono);font-size:10.5px;margin:2px 4px 2px 0;
+  padding:1px 7px;border:0.5px solid var(--grid);border-radius:4px;cursor:pointer;background:var(--paper)}
+.evchip:hover{border-color:var(--accent)}
+.evchip.win{border-left:2px solid var(--ok)}
+.tcl-row{font-family:var(--mono);font-size:11px;padding:4px 0;border-bottom:0.5px solid var(--grid);
+  cursor:pointer}
+.tcl-row .t{color:var(--accent)}
+.tcl-row .r{color:var(--dim);float:right;max-width:52%;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.tcl-row .q{display:block;color:var(--dim);font-size:10px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.tcl-row.win{border-left:2px solid var(--ok);padding-left:6px}
+.tcl-row.hl{background:#EAE7DF}
+.expand{cursor:pointer;color:var(--accent);font-size:11.5px;font-family:var(--mono)}
+pre.raw{font-family:var(--mono);font-size:10.5px;background:var(--paper);border:0.5px solid var(--grid);
+  padding:8px;overflow-x:auto;white-space:pre-wrap;max-height:220px;overflow-y:auto;margin:6px 0}
+.kpi{display:flex;gap:0;border:0.5px solid var(--grid);background:var(--panel);margin:12px 0}
+.kpi .cell{flex:1;padding:10px 14px;border-right:0.5px solid var(--grid)}
+.kpi .cell:last-child{border-right:0}
+.kpi .v{font-family:var(--mono);font-size:20px;font-weight:700}
+.kpi .k{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:0.05em}
+.kpi .v.good{color:var(--ok)} .kpi .v.bad{color:var(--warn)}
+.tabbar{display:flex;gap:2px;margin:10px 0;align-items:center}
+.tabbar .lb{font-size:11px;color:var(--dim);margin:0 6px 0 14px;white-space:nowrap}
+.tabbar .lb:first-child{margin-left:0}
+.tabbar button{border:0.5px solid var(--grid);background:var(--panel);cursor:pointer;
+  padding:4px 14px;font-size:12px;color:var(--dim)}
+.tabbar button.active{background:var(--accent);color:var(--paper);border-color:var(--accent)}
+select,button.act{border:0.5px solid var(--grid);background:var(--panel);padding:4px 10px;
+  font-size:12px;font-family:var(--mono);color:var(--ink)}
+button.act:hover{border-color:var(--accent)}
+.hint{color:var(--dim);font-size:11.5px;margin:6px 0}
+code{font-family:var(--mono);font-size:0.92em;background:var(--paper);padding:0 4px;
+  border:0.5px solid var(--grid);border-radius:3px}
+.section{margin-top:8px}
+ul.steps{margin-left:18px;font-size:12.5px}
+ul.steps li{margin:3px 0}
+/* ── 事故概览条（参考 GitHub 高质量 SRE 项目的"一眼状态"模式）── */
+.overview{display:flex;gap:0;border:0.5px solid var(--grid);background:var(--panel);margin:14px 0;align-items:stretch}
+.overview .ov-cell{flex:1;padding:12px 16px;border-right:0.5px solid var(--grid);min-width:0}
+.overview .ov-cell:last-child{border-right:0}
+.overview .ov-k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px}
+.overview .ov-v{font-family:var(--mono);font-size:15px;font-weight:700;line-height:1.3}
+.overview .ov-v .sub{display:block;font-size:10.5px;font-weight:400;color:var(--dim)}
+.ov-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:baseline}
+.ov-dot.ok{background:var(--ok)} .ov-dot.bad{background:var(--fault)} .ov-dot.mid{background:var(--warn)}
+/* ── 事故时间线（叙事线：告警→开查→工具→结论）── */
+.story{border:0.5px solid var(--grid);background:var(--panel);margin:14px 0;padding:14px 18px}
+.story .st-title{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+.story .st-row{display:flex;gap:12px;padding:7px 0;border-bottom:0.5px dotted var(--grid);font-size:13px;align-items:baseline}
+.story .st-row:last-child{border-bottom:0}
+.story .st-when{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;min-width:66px}
+.story .st-what{flex:1}
+.story .st-tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:0 6px;margin-right:8px;
+  border:0.5px solid var(--grid);border-radius:3px;color:var(--accent)}
+/* ── 大白话摘要条（把 AI 结论翻译成人话）── */
+.plain{background:#EFF4E9;border-left:2.5px solid var(--ok);padding:10px 14px;margin:10px 0;font-size:13.5px;line-height:1.6}
+.plain.bad{background:#F7ECEC;border-left-color:var(--fault)}
+.plain .pl-k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px}
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mc-col{border:0.5px solid var(--grid);background:var(--panel);padding:10px}
+.mc-col .h{font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:6px}
+.tl-row{font-family:var(--mono);font-size:10px;padding:1.5px 0;border-bottom:0.5px dotted var(--grid)}
+footer{margin-top:40px;padding-top:12px;border-top:0.5px solid var(--grid);color:var(--dim);
+  font-size:11px;font-family:var(--mono)}
+@media (max-width:980px){.grid3{grid-template-columns:1fr}.col{border-right:0;border-bottom:0.5px solid var(--grid)}}
+</style>
+</head>
+<body>
+<button class="refresh-btn" onclick="doRefresh()" title="重新读取 bundle.js（配合 make demo-refresh：跑完新评测后点此按钮，新 run 出现在评测轮次下拉框）">↻ 刷新数据</button>
+<div id="app">
+  <nav>
+    <div class="logo">§</div>
+    <button data-v="investigate">调查台</button>
+    <button data-v="evidence">证据</button>
+    <button data-v="benchmark">评测</button>
+    <button data-v="lab">场景</button>
+  </nav>
+  <main id="main"></main>
+</div>
+<script>
+"use strict";
+const B = window.__BUNDLE__;
+const $ = (s)=>document.querySelector(s);
+const main = $("#main");
+const fmt = (n,d=3)=> (n===null||n===undefined) ? "—" : Number(n).toFixed(d);
+const esc = (s)=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+/* 隐私口径：演示界面不显示调查发生的日期（年份/月份/日期），只保留一天内的时刻 HH:MM:SS */
+const maskTime = (ts)=>{ const m=String(ts||"").match(/T(\d{2}:\d{2}:\d{2})/); return m? m[1] : "—"; };
+/* run_id 展示名：剥离日期前缀（如 20260917T152725Z → run-T152725Z），数据本身不变 */
+const runLabel = (rid)=>String(rid||"").replace(/^\d{8}T/, "run-T");
+
+/* ── 全局状态 ── */
+const state = { view:"investigate", run:"batch1-seed42", scenario:"checkout-pod_crash-seed42", showGT:false };
+
+/* ── helpers ── */
+function runSids(runId){ const r=B.runs[runId]; return r? Object.keys(r.scenarios).sort():[]; }
+function rawAgent(runId,sid){ const r=B.runs[runId]; if(!r) return null;
+  return r.raw.find(x=>String(x.snapshot_dir).includes(sid)); }
+function scenarioList(){ return B.snapshots.map(s=>s.scenario_id); }
+
+/* ═══ 视图 1：调查台 ═══ */
+function vInvestigate(){
+  const r = B.runs[state.run]; if(!r) return emptyRun();
+  const sc = r.scenarios[state.scenario];
+  if(!sc){ const sids=runSids(state.run); if(sids.length) state.scenario=sids[0];
+    return vInvestigate(); }
+  const rep = sc.report||{}; const g = sc.grounding||{};
+  const tcl = sc.tool_calls||[]; const audit = sc.tool_audit||[];
+  const rcs = rep.root_causes||[];
+  const snap = B.snapshots.find(s=>s.scenario_id===state.scenario);
+  const cfg = r.config||{};
+  const auditByTool = {};
+  (audit||[]).forEach(a=>{ if(!auditByTool[a.tool]) auditByTool[a.tool]=[]; auditByTool[a.tool].push(a); });
+
+  let h = `
+  <header class="top">
+    <div class="title">调查台 · <span class="mono">${esc(state.scenario)}</span></div>
+    <div class="meta">${esc(cfg.mode||"replay")} · ${esc(cfg.llm_model||cfg.model||"")} · seed ${esc(String(cfg.seed??cfg.random_seed??"—"))}
+      · ${esc(runLabel(state.run))}</div>
+  </header>
+  <div class="tabbar">
+    <span class="lb">故障场景</span>
+    <select onchange="state.scenario=this.value;render()">
+      ${scenarioList().map(s=>`<option ${s===state.scenario?"selected":""}>${esc(s)}</option>`).join("")}
+    </select>
+    <span class="lb">评测轮次（run）</span>
+    <select onchange="state.run=this.value;state.scenario='checkout-pod_crash-seed42';render()">
+      ${Object.keys(B.runs).map(r=>`<option value="${esc(r)}" ${r===state.run?"selected":""}>${esc(runLabel(r))}</option>`).join("")}
+    </select>
+  </div>
+  ${ovStrip(sc,rep,g,snap,tcl)}
+  ${plainSummary(rcs,g)}
+  ${storyTimeline(sc,rep,g,tcl)}
+  <div class="grid3">
+    <div class="col">
+      <h3>事件上下文</h3>
+      <div class="mono" style="font-size:11px">${esc(rep.incident_id||"—")}</div>
+      <div class="mono" style="font-size:10.5px;color:var(--dim)">${maskTime(rep.investigation_start_ts)} → ${maskTime(rep.investigation_end_ts)}</div>
+      <div style="margin-top:10px">${snap? chaosBadges(snap):""}</div>
+      <h3 style="margin-top:14px">Ground Truth</h3>
+      ${state.showGT
+        ? `<div class="mono">${esc(snap?.ground_truth?.fault_service||"")} / ${esc(snap?.ground_truth?.fault_type||"")}</div>`
+        : `<div class="blurred mono" onclick="state.showGT=true;render()">██████ / ██████</div>
+           <span class="gt-toggle" onclick="state.showGT=true;render()">[ 显示真值 ]</span>`}
+      <h3 style="margin-top:14px">Grounding</h3>
+      <div class="mono">${fmt(g.grounding_score)} <span style="color:var(--dim)">(${g.verified??"—"}/${g.total??"—"} 可追溯)</span></div>
+      ${g.has_hallucination_warning? `<div class="warn-fixed"><span class="h">HALLUCINATION WARNING</span></div>`:""}
+    </div>
+    <div class="col">
+      <h3>Top-3 根因假设</h3>
+      ${rcs.map((rc,i)=>`
+        <div class="hypo ${i===0?"r1":""}">
+          <span class="rank">#${rc.rank}</span><span class="svc">${esc(rc.service)}</span>
+          <span class="badge ${i===0?"acc":""}">${esc(rc.fault_type)}</span>
+          <span class="conf">conf ${fmt(rc.confidence,2)}</span>
+          <div style="font-size:12px;margin:4px 0">${esc(String(rc.description||"").split("\n")[0]).slice(0,220)}</div>
+          <div>${(rc.evidence||[]).map(e=>`<span class="evchip" onclick="jumpToTool(${i},this)" title="${esc(e.query_or_id||"").slice(0,120)}">${esc(e.signal_type)}</span>`).join("")}
+            <span class="expand" onclick="toggleEv(this)"> 查看证据 ▾</span></div>
+          <div class="evdetail" style="display:none">
+            ${(rc.evidence||[]).map(e=>`
+              <div style="font-size:11px;border-top:0.5px dotted var(--grid);padding:3px 0">
+                <span class="badge">${esc(e.signal_type)}</span>
+                <span class="mono" style="font-size:10.5px">${esc(String(e.query_or_id||"").slice(0,150))}</span>
+                <span class="mono" style="color:var(--dim);float:right">obs ${esc(e.observed_value??"—")}</span>
+              </div>`).join("")}
+          </div>
+        </div>`).join("") || "<div class='hint'>（无根因假设产物）</div>"}
+      <h3>处置建议</h3>
+      <ol class="steps">${(rep.remediation_steps||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol>
+    </div>
+    <div class="col">
+      <h3>工具调用流水 <span class="mono" style="color:var(--dim)">×${tcl.length}</span></h3>
+      ${tcl.map((t,i)=>`
+        <div class="tcl-row" id="tc-${i}">
+          <span class="t">${esc(t.tool_name)}</span>
+          <span class="r">${esc(String(t.result_preview||"").slice(0,60))}</span>
+          <span class="q">${esc(String(t.query_or_id||t.args?JSON.stringify(t.args):"").slice(0,110))}</span>
+        </div>`).join("") || "<div class='hint'>本次运行未记录调用流水</div>"}
+    </div>
+  </div>
+  <div class="kpi">
+    <div class="cell"><div class="k">延迟</div><div class="v">${fmt(rep.latency_s,1)}s</div></div>
+    <div class="cell"><div class="k">成本(deepseek 实价)</div><div class="v">$${fmt(rep.cost_usd,4)}</div></div>
+    <div class="cell"><div class="k">prompt tokens</div><div class="v">${rep.total_prompt_tokens??"—"}</div></div>
+    <div class="cell"><div class="k">completion tokens</div><div class="v">${rep.total_completion_tokens??"—"}</div></div>
+    <div class="cell"><div class="k">gateway 审计</div><div class="v" style="font-size:13px">${auditSummary(audit)}</div></div>
+  </div>`;
+  return h;
+}
+function chaosBadges(snap){
+  const y = B.scenarios.find(s=>s.metadata && s.metadata.scenario_id===snap.scenario_id);
+  if(!y) return "";
+  const m=y.metadata, cm=(y.chaos_manifest||{}).spec||{};
+  return `<span class="badge fault">${esc(m.fault_type)}</span><span class="badge">${esc(m.fault_service)}</span>
+    <span class="badge">${esc(y.chaos_manifest?y.chaos_manifest.kind:"")}</span>
+    <span class="badge">${esc(cm.action||"")} ${esc(cm.duration||"")}</span>`;
+}
+
+/* ── 事故概览条：一眼读懂"什么坏了、查得对不对、花了多少" ── */
+function ovStrip(sc,rep,g,snap,tcl){
+  const rcs=rep.root_causes||[]; const top=rcs[0]||{};
+  const gtOk = top.service && snap && snap.ground_truth && top.service===snap.ground_truth.fault_service;
+  const cls = rcs.length ? (gtOk?"ok":"mid") : "mid";
+  return `<div class="overview">
+    <div class="ov-cell"><div class="ov-k">故障注入</div>
+      <div class="ov-v">${esc(snap?.ground_truth?.fault_service??"—")}<span class="sub">${esc(snap?.ground_truth?.fault_type??"")}（Chaos Mesh 真实注入）</span></div></div>
+    <div class="ov-cell"><div class="ov-k">Agent 结论 Top-1</div>
+      <div class="ov-v"><span class="ov-dot ${cls}"></span>${esc(top.service??"—")}<span class="sub">${esc(top.fault_type??"")} · 置信 ${fmt(top.confidence,2)}</span></div></div>
+    <div class="ov-cell"><div class="ov-k">判定</div>
+      <div class="ov-v" style="color:${cls==="ok"?"var(--ok)":"var(--warn)"}">${rcs.length?(gtOk?"命中根因":"部分命中"):"无结论"}<span class="sub">对照隐藏的真值（右上可展开）</span></div></div>
+    <div class="ov-cell"><div class="ov-k">调查开销</div>
+      <div class="ov-v">${fmt(rep.latency_s,0)}s<span class="sub">${tcl.length} 次工具调用 · $${fmt(rep.cost_usd,4)}</span></div></div>
+    <div class="ov-cell"><div class="ov-k">证据质量</div>
+      <div class="ov-v">${fmt(g.grounding_score)}<span class="sub">${g.verified??"—"}/${g.total??"—"} 条可回溯${g.has_hallucination_warning?" · ⚠ 有幻觉告警":""}</span></div></div>
+  </div>`;
+}
+
+/* ── 大白话摘要：一句话讲清这次调查 ── */
+function plainSummary(rcs,g){
+  if(!rcs.length) return "";
+  const top=rcs[0];
+  const desc=String(top.description||"").split("\n")[0];
+  return `<div class="plain ${g.has_hallucination_warning?"bad":""}">
+    <span class="pl-k">一句话结论</span>
+    Agent 判断最可能的根因是 <b>${esc(top.service)}</b> 发生了 <b>${esc(top.fault_type)}</b>（置信 ${fmt(top.confidence,2)}）——${esc(desc.slice(0,150))}${desc.length>150?"…":""}
+  </div>`;
+}
+
+/* ── 事故时间线：按叙事顺序讲（告警→开查→取证→结论）── */
+function storyTimeline(sc,rep,g,tcl){
+  const t0=maskTime(rep.investigation_start_ts), t1=maskTime(rep.investigation_end_ts);
+  const toolsByKind={};
+  (tcl||[]).forEach(t=>{ const n=t.tool_name||"?"; toolsByKind[n]=(toolsByKind[n]||0)+1; });
+  const toolSummary=Object.entries(toolsByKind).map(([n,c])=>`${esc(n)}×${c}`).join(" · ");
+  return `<div class="story">
+    <div class="st-title">事故时间线 · 这次调查发生了什么</div>
+    <div class="st-row"><span class="st-when">${t0}</span><span class="st-what"><span class="st-tag">开始</span>调查启动，Agent 拿到告警上下文与窗口</span></div>
+    <div class="st-row"><span class="st-when">…</span><span class="st-what"><span class="st-tag">取证</span>${(tcl||[]).length} 次工具调用：${toolSummary||"—"}</span></div>
+    <div class="st-row"><span class="st-when">${t1}</span><span class="st-what"><span class="st-tag">结论</span>Top-1 根因提交，grounding ${fmt(g.grounding_score)}（${g.verified??"—"}/${g.total??"—"} 条证据可回溯到原始调用）</span></div>
+  </div>`;
+}
+function auditSummary(audit){
+  if(!audit||!audit.length) return "—（该 run 无审计）";
+  const v={}; audit.forEach(a=>v[a.verdict]=(v[a.verdict]||0)+1);
+  return Object.entries(v).map(([k,n])=>`${n} ${k}`).join(" / ");
+}
+function toggleEv(el){ const d=el.parentElement.querySelector(".evdetail");
+  d.style.display = d.style.display==="none"?"block":"none";
+  el.textContent = d.style.display==="none"?" 查看证据 ▾":" 收起证据 ▴"; }
+function jumpToTool(i,chip){
+  const query = chip.title||"";
+  const rows=[...document.querySelectorAll(".tcl-row")];
+  let best=-1;
+  rows.forEach((r,idx)=>{ if(r.textContent.includes(query.slice(0,30))) best=idx; });
+  if(best<0 && rows.length) best=0;
+  rows.forEach(r=>r.classList.remove("hl"));
+  if(rows[best]){ rows[best].classList.add("hl"); rows[best].scrollIntoView({block:"center"}); }
+}
+
+/* ═══ 视图 2：证据追溯 ═══ */
+function vEvidence(){
+  const r=B.runs[state.run]; if(!r) return emptyRun();
+  const sc=r.scenarios[state.scenario]; if(!sc) return "<div class='hint'>该 run 无此场景</div>";
+  const g=sc.grounding||{}; const items=g.items||[]; const failed=g.failed_items||[];
+  const tcl=sc.tool_calls||[]; const audit=sc.tool_audit||[];
+  let h=`
+  <header class="top"><div class="title">证据追溯 · <span class="mono">${esc(state.scenario)}</span></div>
+  <div class="meta">${esc(runLabel(state.run))}</div></header>
+  <div class="tabbar">
+    <span class="lb">故障场景</span>
+    <select onchange="state.scenario=this.value;render()">${scenarioList().map(s=>`<option ${s===state.scenario?"selected":""}>${esc(s)}</option>`).join("")}</select>
+    <span class="lb">评测轮次（run）</span>
+    <select onchange="state.run=this.value;render()">${Object.keys(B.runs).map(x=>`<option value="${esc(x)}" ${x===state.run?"selected":""}>${esc(runLabel(x))}</option>`).join("")}</select>
+    <button class="act" onclick="evFilter='';render()">全部</button>
+    <button class="act" onclick="evFilter='miss';render()">只看未命中</button>
+  </div>
+  <div class="kpi">
+    <div class="cell"><div class="k">grounding</div><div class="v ${g.grounding_score<0.8?'bad':'good'}">${fmt(g.grounding_score)}</div></div>
+    <div class="cell"><div class="k">可追溯</div><div class="v">${g.verified??"—"}/${g.total??"—"}</div></div>
+    <div class="cell"><div class="k">未命中</div><div class="v" style="color:var(--warn)">${failed.length}</div></div>
+    <div class="cell"><div class="k">阈值</div><div class="v">0.80</div></div>
+  </div>
+  ${g.has_hallucination_warning?`<div class="warn-fixed"><span class="h">HALLUCINATION WARNING — 固定展示，不可折叠</span><div>grounding &lt; 0.80：评测机制真实工作的证据，不是需要隐藏的瑕疵。</div></div>`:""}
+  <table><thead><tr><th>#</th><th>service</th><th>信号</th><th>query / id</th><th>观测</th><th>期望</th><th>判定</th></tr></thead><tbody>
+  ${allEvidenceItems(sc).map((e,i)=>{
+    if(evFilter==="miss" && e.hit!==false) return "";
+    return `<tr ${e.hit===false?'style="background:#F5EDE0"':""}>
+      <td class="num">${i+1}</td><td class="mono">${esc(e.service||"—")}</td>
+      <td><span class="badge">${esc(e.signal_type||"—")}</span></td>
+      <td class="mono" style="font-size:10.5px">${esc(String(e.query_or_id||"").slice(0,110))}</td>
+      <td class="num mono" style="font-size:10.5px">${esc(String(e.observed_value??"—").slice(0,24))}</td>
+      <td class="mono" style="font-size:10.5px">${esc(String(e.expected_baseline??"—").slice(0,30))}</td>
+      <td>${e.hit===false?`<span class="badge fault">未命中</span>`:`<span class="badge ok">命中</span>`}</td></tr>`;
+  }).join("")}
+  </tbody></table>
+  <h3>工具调用时间线（含 gateway 审计）</h3>
+  <table><thead><tr><th>#</th><th>工具</th><th>query 摘要</th><th>结果摘要</th><th>审计</th></tr></thead><tbody>
+  ${tcl.map((t,i)=>{
+    const a = audit[i]||{};
+    return `<tr><td class="num">${i}</td><td class="mono">${esc(t.tool_name)}</td>
+      <td class="mono" style="font-size:10px">${esc(String(t.query_or_id||"").slice(0,90))}</td>
+      <td class="mono" style="font-size:10px">${esc(String(t.result_preview||"").slice(0,60))}</td>
+      <td>${a.verdict?`<span class="badge ${a.verdict==="ALLOW"?"ok":"warn"}">${esc(a.verdict)}</span>`:`<span class="hint">—</span>`}</td></tr>`;
+  }).join("")}
+  </tbody></table>`;
+  return h;
+}
+let evFilter="";
+function allEvidenceItems(sc){
+  const rep=sc.report||{}; const out=[];
+  (rep.root_causes||[]).forEach(rc=>(rc.evidence||[]).forEach(e=>out.push({...e,service:rc.service})));
+  const g=sc.grounding||{};
+  (g.failed_items||[]).forEach(f=>out.push({signal_type:f.signal_type||"?",query_or_id:f.query_or_id||f.evidence||"",hit:false,reason:f.reason,service:"-"}));
+  return out;
+}
+
+/* ═══ 视图 3：评测看板 ═══ */
+function vBenchmark(){
+  const seeds=["batch1-seed42","batch1-seed43","batch1-seed44"];
+  const run=B.runs[state.run]||B.runs["batch1-seed42"];
+  let h=`
+  <header class="top"><div class="title">评测看板</div>
+    <div class="meta">11 场景 · 4 方法 · 3 轮 seed · deepseek-flash 实价</div></header>`;
+  // KPI（以 batch1-seed42 为主展示）
+  const agg = runAgg(run);
+  h+=`<div class="kpi">
+    ${kpiCell("Acc@1", fmt(agg.acc1), agg.acc1===1?"good":"")}
+    ${kpiCell("MRR", fmt(agg.mrr))}
+    ${kpiCell("Grounding", fmt(agg.gs), agg.gs<0.8?"bad":"good")}
+    ${kpiCell("平均延迟", fmt(agg.lat,1)+"s")}
+    ${kpiCell("总成本", "$"+fmt(agg.cost,4))}
+    ${kpiCell("场景数", agg.n)}
+  </div>`;
+  // 四方法对照（同 run）
+  h+=`<h3>四方法对照 · <span class="mono">${esc(runLabel(state.run))}</span>（同 run，G-3 已闭）</h3>
+  <table><thead><tr><th>方法</th><th class="num">Acc@1</th><th class="num">Acc@3</th><th class="num">MRR</th><th class="num">FT 准确</th><th class="num">Grounding</th><th class="num">延迟</th><th class="num">成本</th></tr></thead><tbody>
+  ${methodRows(run)}
+  </tbody></table>
+  <div class="hint">方法学：agent 与 3 基线同 run_id 同快照同 seed（fix-eval-cross-run 修复后口径）。</div>`;
+  // 3 轮 seed 复现
+  h+=`<h3>三轮 seed 复现（RANDOM_SEED 42/43/44）</h3>
+  <table><thead><tr><th>run</th><th class="num">Acc@1</th><th class="num">旧7场景逐场景</th><th class="num">grounding</th><th class="num">成本</th></tr></thead><tbody>
+  ${seeds.map(s=>{ const a=runAgg(B.runs[s]||{});
+    return `<tr><td class="mono">${esc(s)}</td><td class="num mono">${fmt(a.acc1)}</td>
+    <td class="mono" style="font-size:10.5px">${a.old7.join(" ")}</td>
+    <td class="num mono">${fmt(a.gs)}</td><td class="num mono">$${fmt(a.cost,4)}</td></tr>`;}).join("")}
+  </tbody></table>
+  <div class="hint">旧 7 场景 Acc@1 = <b>1.000 ± 0.000（三轮零波动）</b>；基线 zscore/composite 逐场景三轮全等（确定性实证）。</div>`;
+  // grounding 逐场景 + 幻觉告警固定区
+  h+=`<h3>Grounding 逐场景</h3><table><thead><tr><th>场景</th><th class="num">grounding</th><th class="num">acc@1</th><th>告警</th></tr></thead><tbody>
+  ${Object.entries(run.scenarios).sort().map(([sid,sc])=>{
+    const g=(sc.grounding||{}).grounding_score; const ra=rawAgent(state.run,sid)?.agent||{};
+    const low = g!==undefined && g<0.80;
+    return `<tr ${low?'style="background:#F5EDE0"':""}><td class="mono">${esc(sid)}</td>
+      <td class="num mono">${fmt(g)}</td><td class="num mono">${ra.accuracy_at_1??"—"}</td>
+      <td>${low?`<span class="badge fault">⚠ &lt;0.80（固定展示）</span>`:""}</td></tr>`;
+  }).join("")}</tbody></table>`;
+  // 记忆对照卡片（D5）
+  const mc=B.memory_compare||{};
+  if(mc.off&&mc.on){
+    h+=`<h3>记忆对照 · payment http_abort（INCIDENT_MEMORY off → on）</h3>
+    <div class="mc-grid">
+      <div class="mc-col"><div class="h">OFF（无记忆） · ${esc(runLabel(mc.off.run_id))} · ${mc.off.n_tool_calls} 次调用</div>
+        ${mc.off.tool_calls.map(t=>`<div class="tl-row">${String(t.i).padStart(2,"0")} ${esc(t.tool)} ${esc(String(t.query).slice(0,52))}</div>`).join("")}</div>
+      <div class="mc-col"><div class="h">ON（top-3 历史注入） · ${esc(runLabel(mc.on.run_id))} · ${mc.on.n_tool_calls} 次调用</div>
+        ${mc.on.tool_calls.map(t=>`<div class="tl-row">${String(t.i).padStart(2,"0")} ${esc(t.tool)} ${esc(String(t.query).slice(0,52))}</div>`).join("")}</div>
+    </div>
+    <div class="hint">tool_calls ${mc.off.n_tool_calls}→${mc.on.n_tool_calls} · latency ${fmt(mc.off.latency_s,1)}s→${fmt(mc.on.latency_s,1)}s · grounding ${fmt(mc.off.grounding)}→${fmt(mc.on.grounding)}（净升）——Hint≠Evidence：记忆只引导探索，结论仍由当前工具证据支撑。</div>`;
+  }
+  // 诚实性固定区块
+  h+=`<div class="warn-fixed"><span class="h">诚实性声明 — 固定展示，不可折叠</span>
+  <div>· 本页数据全部来自磁盘产物（构建期 bundle 聚合，前端零造数）</div>
+  <div>· replay = 真实故障的冻结回放；live 复核见 oncall-e2e-cloud（7/7 一致背书）</div>
+  <div>· 模型 deepseek-flash（与 llama 基准数据不可直接横向对比）；成本为官方实价口径</div>
+  <div>· 新 4 场景中 frontend-high_latency 与 payment-partition 为信号不可得的诚实零分（live 检测层同样失明——跨层一致性实证）</div></div>`;
+  return h;
+}
+function kpiCell(k,v,cls=""){ return `<div class="cell"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`; }
+function runAgg(run){
+  const agents=[]; const sids=Object.keys(run.scenarios||{});
+  sids.forEach(sid=>{ const ra=rawAgent(run.run_id,sid); if(ra&&ra.agent) agents.push(ra.agent); });
+  const n=agents.length||1;
+  const sidList=(run.raw||[]).map(r=>String(r.snapshot_dir).split(/[\\/]/).pop());
+  const old7=["checkout-pod_crash-seed42","product-catalog-high_latency-seed42","payment-http_abort-seed42","recommendation-cpu_stress-seed42","cart-memory_stress-seed42","shipping-high_latency-seed42","frontend-pod_crash-seed42"];
+  return {
+    n:agents.length,
+    acc1:agents.reduce((a,x)=>a+x.accuracy_at_1,0)/n,
+    mrr:agents.reduce((a,x)=>a+(x.mrr||0),0)/n,
+    gs:agents.reduce((a,x)=>a+(x.grounding_score||0),0)/n,
+    lat:agents.reduce((a,x)=>a+(x.latency_s||0),0)/n,
+    cost:agents.reduce((a,x)=>a+(x.cost_usd||0),0)/n,
+    old7: old7.map(s=>{ const ra=(run.raw||[]).find(r=>String(r.snapshot_dir).includes(s));
+      return ra&&ra.agent? (s.split("-")[0].slice(0,5)+":"+ra.agent.accuracy_at_1):"—";}),
+  };
+}
+function methodRows(run){
+  const raw=run.raw||[]; if(!raw.length) return `<tr><td colspan="8" class="hint">（该 run 无 raw_results）</td></tr>`;
+  const sample=raw[0]; const methods=["agent","zscore","composite_zscore","random"];
+  const names={agent:"SRE-Copilot (deepseek)",zscore:"Z-score",composite_zscore:"Composite Z",random:"Random"};
+  return methods.map(m=>{
+    const cells=raw.map(r=>r[m]).filter(Boolean);
+    if(!cells.length) return `<tr><td>${names[m]}</td><td colspan="7" class="hint">本 run 未产出</td></tr>`;
+    const acc=cells.reduce((a,x)=>a+(x.accuracy_at_1||0),0)/cells.length;
+    const mrr=cells.reduce((a,x)=>a+(x.mrr||0),0)/cells.length;
+    const gs=cells.reduce((a,x)=>a+(x.grounding_score||0),0)/cells.length;
+    const lat=cells.reduce((a,x)=>a+(x.latency_s||0),0)/cells.length;
+    const cost=cells.reduce((a,x)=>a+(x.cost_usd||0),0)/cells.length;
+    const ft=cells.reduce((a,x)=>a+(x.fault_type_correct||0),0)/cells.length;
+    return `<tr ${m==="agent"?'style="border-left:2px solid var(--accent)"':""}><td><b>${names[m]}</b></td>
+      <td class="num mono">${fmt(acc)}</td><td class="num mono">—</td><td class="num mono">${fmt(mrr)}</td>
+      <td class="num mono">${m==="agent"?fmt(ft):"—"}</td><td class="num mono">${m==="agent"?fmt(gs):"—"}</td>
+      <td class="num mono">${m==="agent"?fmt(lat,1)+"s":"0s"}</td><td class="num mono">${m==="agent"?"$"+fmt(cost,4):"$0"}</td></tr>`;
+  }).join("");
+}
+
+/* ═══ 视图 4：场景与产物 ═══ */
+function vLab(){
+  let h=`<header class="top"><div class="title">场景与产物</div>
+  <div class="meta">${B.meta.n_scenarios} 场景 · ${B.meta.n_snapshots} 快照 · ${B.meta.n_runs} runs</div></header>`;
+  h+=`<h3>混沌场景清单</h3><table><thead><tr><th>scenario_id</th><th>服务</th><th>故障</th><th>chaos</th><th>参数</th><th>快照</th></tr></thead><tbody>
+  ${B.scenarios.map(y=>{
+    const m=y.metadata||{}, cm=(y.chaos_manifest||{}).spec||{};
+    const snap=B.snapshots.find(s=>s.scenario_id===m.scenario_id);
+    const delay=cm.delay?`delay ${cm.delay.latency}`:cm.loss?`loss ${cm.delay?"":""}${cm.loss.loss}%`:cm.action;
+    return `<tr><td class="mono">${esc(m.scenario_id||"")}</td>
+      <td class="mono">${esc(m.fault_service||"")}</td>
+      <td><span class="badge fault">${esc(m.fault_type||"")}</span></td>
+      <td class="mono" style="font-size:10.5px">${esc(y.chaos_manifest?y.chaos_manifest.kind+"·"+cm.action:"")}</td>
+      <td class="mono" style="font-size:10.5px">${esc(delay||"")} ${esc(cm.duration||"")}</td>
+      <td>${snap?`<span class="badge ok">${snap.telemetry_files.length} files</span>`:`<span class="badge warn">缺</span>`}</td></tr>`;
+  }).join("")}</tbody></table>`;
+  h+=`<h3>演示看点（DEMO.md 摘录）</h3>`;
+  B.snapshots.forEach(s=>{
+    if(!s.demo_md) return;
+    const hi = s.demo_md.split(/##?\s*演示看点/)[1]||"";
+    if(!hi.trim()) return;
+    h+=`<div class="section"><div class="mono" style="font-size:11px;color:var(--accent)">${esc(s.scenario_id)}</div>
+    <div style="font-size:12px">${esc(hi.trim().split("\n").filter(l=>l.trim()).slice(0,4).join(" "))}</div></div>`;
+  });
+  h+=`<h3>运行史</h3><table><thead><tr><th>run</th><th>mode</th><th>模型</th><th>场景数</th><th>用途</th></tr></thead><tbody>
+  ${Object.keys(B.runs).map(r=>{ const c=B.runs[r].config||{};
+    const use={"batch1-seed42":"三轮重跑 s42","batch1-seed43":"三轮重跑 s43","batch1-seed44":"三轮重跑 s44",
+      "gw-regression":"gateway 回归门","mem-baseline-off":"记忆 off 基线","mem-inject-on":"记忆 on 注入",
+      "cost-newrate-verify":"deepseek 实价验证","oncall-e2e-cloud":"oncall E2E 实录"}[r]||"";
+    return `<tr><td class="mono">${esc(runLabel(r))}</td><td class="mono">${esc(c.mode||"—")}</td>
+      <td class="mono">${esc(c.llm_model||c.model||"—")}</td><td class="num">${Object.keys(B.runs[r].scenarios).length}</td>
+      <td>${esc(use)}</td></tr>`;}).join("")}
+  </tbody></table>`;
+  return h;
+}
+
+function emptyRun(){ return `<div class="hint">无可用 run——执行 <code>make demo-all</code> 生成。</div>`; }
+
+/* ── 路由 ── */
+function render(){
+  const views={investigate:vInvestigate,evidence:vEvidence,benchmark:vBenchmark,lab:vLab};
+  main.innerHTML=(views[state.view]||vInvestigate)();
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.v===state.view));
+  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{state.view=b.dataset.v;render();});
+}
+
+/* ── 刷新数据：重新加载 bundle.js 并重渲染（保留当前视图选择） ──
+   说明：bundle.js 是构建期产物——先在终端跑 `make demo-refresh`（评测+追加白名单+重建 bundle），
+   再点本按钮，新 run 即出现在"评测轮次"下拉框。纯 file:// 环境用 location.reload 兜底。 */
+function doRefresh(){
+  const btn=document.querySelector(".refresh-btn");
+  if(btn){btn.classList.add("busy");btn.textContent="↻ 重新加载…";}
+  /* bundle.js 以 <script> 内联载入——重新加载 = 重新插入带 cache-bust 的 script 标签 */
+  const old=document.querySelector('script[data-bundle]');
+  const s=document.createElement("script");
+  s.dataset.bundle="1";
+  s.src="bundle.js?v="+Date.now();
+  s.onload=()=>{ window.B=window.__BUNDLE__; B=window.__BUNDLE__; render();
+    if(btn){btn.classList.remove("busy");btn.textContent="↻ 刷新数据";} };
+  s.onerror=()=>{ /* file:// 下动态 script 可能受限——回退整页刷新 */ location.reload(); };
+  if(old) old.remove();
+  document.body.appendChild(s);
+}
+render();
+</script>
+</body>
+</html>

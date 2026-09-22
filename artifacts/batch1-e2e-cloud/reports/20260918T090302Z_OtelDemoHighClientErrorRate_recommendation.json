@@ -1,0 +1,97 @@
+{
+  "incident_id": "watchdog-OtelDemoHighClientErrorRate-5ea53e32",
+  "investigation_start_ts": "2026-09-18T09:02:33.896398+00:00",
+  "investigation_end_ts": "2026-09-18T09:03:02.230164+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend is the only service showing anomalous behavior in the window: its server error rate is non-zero (peaking ~0.019/s) while every downstream service (checkout, payment, cart, shipping, currency, product-catalog, recommendation, ad, email) reports 0.000/s, and its p99 server latency is pinned at a flat 10000ms. Frontend traces (user_browse_product) run ~15s with a window p95 of ~75s, indicating the frontend request path is stalling, which produces the client-facing error rate that triggered the watchdog alert.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate max=0.019, p99=0.018, mean=0.003 (only non-zero service; all other services 0.000)",
+          "expected_baseline": "error_rate ~0.000 (frontend steady-state)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency=10000ms, flat across the window (mean=p50=p95=p99=10000)",
+          "expected_baseline": "frontend server p99 well under 100ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "e08029cd7d28db48",
+          "observed_value": "frontend span user_browse_product duration=15002ms; window p95_duration=75024ms over 20 traces, 0 flagged as errors",
+          "expected_baseline": "user_browse_product completes in <500ms"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "Frontend server error rate is non-zero and anomalous relative to a 0 baseline, consistent with aborted or timed-out requests driving the HighClientErrorRate alert. Error traces were not surfaced (0 of 20), so this is a weaker secondary hypothesis than the dominant latency signal.",
+      "confidence": 0.26,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate spiked to 0.019/s during the window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces: service_name=frontend, error_only=True, 2026-09-18T08:58:25Z..2026-09-18T09:01:12Z",
+          "observed_value": "20 traces, 0 with errors, p95_duration=75024ms",
+          "expected_baseline": "no error traces and p95 duration < 1000ms"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"frontend\"} |= \"error\"",
+          "observed_value": "[no logs found] in the incident window",
+          "expected_baseline": "no error log lines expected in steady state"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout fans out to cart, payment, email, shipping, currency and product-catalog, and a slow or failing downstream could stall the frontend browse/checkout path. However checkout itself showed error_rate=0.000 and stable CPU (~0.028 cores), and it was not confirmed by traces or logs, so this remains a low-confidence alternative.",
+      "confidence": 0.12,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 throughout the window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.028 cores, stable (no CPU stress)",
+          "expected_baseline": "checkout CPU ~0.03 cores"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the frontend deployment for the injected latency/timeout condition (raised response delay or aborted request fault) and roll back the last config or flag change affecting the frontend request path.",
+    "Trace a slow user_browse_product request (e.g. trace e08029cd7d28db48) end-to-end to confirm whether the 10-15s stall originates inside frontend or in a downstream dependency (checkout, cart, payment, shipping, currency, product-catalog).",
+    "Temporarily raise frontend request timeouts and enable retries/pod autoscaling to absorb the stall while the fault is remediated.",
+    "Validate flagd feature flags for frontend-related fault injection, since flag-driven faults in the OTel demo can introduce latency or aborts at runtime.",
+    "Add a p99 latency alert on the frontend server span (threshold e.g. 1000ms) to catch the latency precursor that precedes the client error-rate alert."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.62,
+  "latency_s": 28.333766,
+  "cost_usd": 0.0044541,
+  "total_prompt_tokens": 7245,
+  "total_completion_tokens": 1827,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

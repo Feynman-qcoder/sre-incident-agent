@@ -1,0 +1,9 @@
+{
+  "run_id": "batch1-seed43",
+  "mode": "all",
+  "model": "deepseek-flash",
+  "seed": 43,
+  "agent_version": "0.1.0",
+  "n_scenarios": 11,
+  "ts": "2026-09-18T09:27:25.577326+00:00"
+}

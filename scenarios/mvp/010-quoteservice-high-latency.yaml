@@ -1,0 +1,34 @@
+metadata:
+  scenario_id: quote-high_latency-seed42
+  fault_service: quote
+  fault_type: high_latency
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Batch-1 new scenario 010: 1500ms network delay on quote (service-coverage expansion —
+    quote appeared as a real suspect during 003 investigations but had no dedicated
+    scenario). Same discriminative-injection logic as 002 (delay must dwarf the cluster's
+    ms-level baseline). Expected: quote SERVER-span p99 spike, LatencyP99 fires (class-A).
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: NetworkChaos
+  metadata:
+    name: quote-latency-seed42
+    namespace: chaos-mesh
+  spec:
+    action: delay
+    mode: all
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: quote
+    delay:
+      latency: "1500ms"
+      jitter: "300ms"
+      correlation: "25"
+    duration: "300s"
+    direction: to

@@ -1,0 +1,20 @@
+[
+  {
+    "type": "Normal",
+    "reason": "Updated",
+    "message": "Successfully update ObservedGeneration and FailedMessage of resource",
+    "count": 1,
+    "first_time": "2026-09-18 07:56:43+00:00",
+    "last_time": "2026-09-18 07:56:43+00:00",
+    "involved_object_name": "payment-7878dd75bc-z8tg6"
+  },
+  {
+    "type": "Normal",
+    "reason": "Updated",
+    "message": "Successfully update ObservedGeneration and FailedMessage of resource",
+    "count": 1,
+    "first_time": "2026-09-18 08:01:42+00:00",
+    "last_time": "2026-09-18 08:01:42+00:00",
+    "involved_object_name": "payment-7878dd75bc-z8tg6"
+  }
+]

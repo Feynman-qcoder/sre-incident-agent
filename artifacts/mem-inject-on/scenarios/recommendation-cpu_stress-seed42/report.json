@@ -1,0 +1,83 @@
+{
+  "incident_id": "recommendation-cpu_stress-seed42",
+  "investigation_start_ts": "2026-09-18T06:00:36.255413+00:00",
+  "investigation_end_ts": "2026-09-18T06:00:52.032428+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "cpu_stress",
+      "description": "The recommendation service pod is consuming an anomalous amount of CPU (mean 2.343 cores, peaking at 3.608 cores) during the incident window, roughly 30-1200x higher than peer services (frontend 0.070, checkout 0.003, cart 0.007, product-catalog 0.025), which is characteristic of injected CPU stress. Error rate, memory, restarts and p99 latency remain at baseline, ruling out http_abort, memory_stress, pod_crash and high_latency.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "mean=2.343 cores, p95=3.604, max=3.608 cores during 07:56:38-08:03:38 window",
+          "expected_baseline": "recommendation CPU ~0.05-0.10 cores (in line with peer services)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.070 cores, max=0.073 cores",
+          "expected_baseline": "peer baseline, ~30x lower than recommendation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "mean=0.003 cores, max=0.005 cores",
+          "expected_baseline": "peer baseline, ~780x lower than recommendation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[2m]))",
+          "observed_value": "mean=0.007 cores, max=0.009 cores",
+          "expected_baseline": "peer baseline, ~330x lower than recommendation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.025 cores, max=0.028 cores",
+          "expected_baseline": "downstream dependency CPU normal, fault is local to recommendation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 throughout window",
+          "expected_baseline": "error_rate < 0.01; no error spike rules out http_abort"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "mean=105,861,666 bytes, max=108,965,888 bytes (stable ~106 MB)",
+          "expected_baseline": "stable memory, rules out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000 throughout window",
+          "expected_baseline": "0 restarts; rules out pod_crash"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=19.1, max=24.0 ms",
+          "expected_baseline": "p99 in normal range; rules out high_latency"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm the CPU saturation source on the recommendation pod (kubectl top pods -n otel-demo; inspect for a stress-ng / busy-loop sidecar or injected fault marked seed42).",
+    "If the fault is injected, stop/disable the CPU-stress experiment targeting recommendation (e.g. remove the chaos/fault injection) and verify CPU returns to baseline (~0.05 cores).",
+    "Verify recommendation p99 latency and downstream product-catalog call rates return to baseline after the CPU stress is removed."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 1.0,
+  "latency_s": 15.777015,
+  "cost_usd": 0.00317415,
+  "total_prompt_tokens": 4956,
+  "total_completion_tokens": 1371,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

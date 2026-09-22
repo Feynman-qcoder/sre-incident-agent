@@ -1,0 +1,13 @@
+{
+  "scenario_id": "quote-high_latency-seed42",
+  "fault_service": "quote",
+  "fault_type": "high_latency",
+  "chaos_kind": "NetworkChaos",
+  "injection_ts": "2026-09-18T07:38:11.073309+00:00",
+  "recovery_ts": "2026-09-18T07:43:13.804993+00:00",
+  "seed": 42,
+  "chaos_manifest_hash": "c2d7c3d591c902c6",
+  "window_start": "2026-09-18T07:37:11.073309+00:00",
+  "window_end": "2026-09-18T07:44:13.804993+00:00",
+  "validation_passed": false
+}

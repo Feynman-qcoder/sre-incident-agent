@@ -1,0 +1,101 @@
+{
+  "incident_id": "cart-memory_stress-seed42",
+  "investigation_start_ts": "2026-09-18T09:17:36.565780+00:00",
+  "investigation_end_ts": "2026-09-18T09:18:04.517633+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "The cart service is the dominant anomaly: its container working set averages ~93MB and peaks at ~108MB, roughly 4x peer services (~24-25MB for checkout and product-catalog), while CPU (~0.035) and error rate (0.0) stay low and container recreation events occur. This memory-pressure signature matches a memory_stress fault injected on cart.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "mean=93337463 bytes (~93MB), p95=108041011 (~108MB), max=108339200 (~108MB)",
+          "expected_baseline": "peer working set ~24-25MB (checkout 24669661, product-catalog 24191249)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "mean=24669661 bytes (~24.7MB)",
+          "expected_baseline": "healthy peer service working set in otel-demo"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=24191249 bytes (~24.2MB)",
+          "expected_baseline": "healthy peer service working set in otel-demo"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[2m]))",
+          "observed_value": "mean=0.035, max=0.102 cores",
+          "expected_baseline": "low CPU rules out cpu_stress as the dominant fault"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 (mean/p50/p95/p99/max all 0.000)",
+          "expected_baseline": "no error spike rules out http_abort as the dominant fault"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=cart, since_seconds=600)",
+          "observed_value": "Created: Container created (count=2); Started: Container started (count=2)",
+          "expected_baseline": "no container recreation during a steady-state window"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "cart",
+      "fault_type": "pod_crash",
+      "description": "Container recreation events (Created/Started count=2) and a restart increase (max ~1.03 over 5m) in the cart pod are consistent with pod instability secondary to memory pressure, but there are no OOMKilled or BackOff events, so this is a weaker explanation than memory_stress.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "mean=0.619, max=1.031 restarts",
+          "expected_baseline": "0 restarts in steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=cart, since_seconds=600)",
+          "observed_value": "Created: Container created (count=2); Started: Container started (count=2)",
+          "expected_baseline": "no scheduled container recreation"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "cart",
+      "fault_type": "high_latency",
+      "description": "The injected memory pressure on cart can translate into elevated p99 latency as the container struggles under memory load, but cart shows no error spike and CPU remains low, so latency is a secondary effect rather than the primary fault.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "p99=108279562 bytes (~108MB) sustained near peak",
+          "expected_baseline": "peer working set ~24-25MB"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable the cart memory_stress fault via the fault-injection control plane (flagd) for the seed42 scenario.",
+    "Raise the cart pod memory requests/limits and investigate a possible memory leak, since the cart working set (~93-108MB) ran ~4x its peer services (~24MB).",
+    "Confirm container recreation/restart events subside after the fault is disabled and monitor cart working set returning toward the ~24MB peer baseline."
+  ],
+  "fault_type_classification": "memory_stress",
+  "grounding_score": 0.7778,
+  "latency_s": 27.951853,
+  "cost_usd": 0.0017290500000000002,
+  "total_prompt_tokens": 5211,
+  "total_completion_tokens": 1579,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

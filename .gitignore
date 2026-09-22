@@ -1,0 +1,53 @@
+# Secrets
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Telemetry snapshots are fully versioned (metadata + ground_truth + raw queries)
+# so that `git clone` → `make demo-all` / `make eval-all` reproduces evaluation
+# end-to-end without re-collecting from a cluster. Total ~9.4 MB for 11 scenarios.
+# (If a snapshot grows pathologically large, exclude specific dirs here rather
+#  than reinstating a blanket ignore — reproducibility is a first-class feature.)
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# kind kubeconfig
+kubeconfig-sre-incident-agent.yaml
+
+# fupan/ —— 作者本地过程文档（执行记录 / 验收报告 / 复盘 / 台账 / 演示剧本 /
+# 本地部署速查手册），私有，不入库、不上传仓库。
+# 部署必需的工具脚本已迁出至 deploys/scripts/ 与 scripts/。
+fupan/
+
+# 本地运行时产物与中间目录（非分发内容）
+# artifacts/watchdog/：本机 watchdog 值守产物（报告 + state.json + 审计）
+artifacts/watchdog/
+# snapshots_parent_tmp/：采集过程中的临时父目录
+snapshots_parent_tmp/
+# snapshots/*.png：本地验证截图
+snapshots/*.png
+# 证据截图（含企微群名/手机状态栏等个人信息）：本地留存于 fupan/，不入库
+artifacts/*/screenshots/
+
+# 本地 AI CLI 工具配置（OpenSpec commands/skills 等，仅本机使用，不随仓库分发）
+.codebuddy/

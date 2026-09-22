@@ -1,0 +1,22 @@
+{
+  "grounding_score": 0.8,
+  "verified": 8,
+  "total": 10,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "1",
+      "service": "checkout",
+      "signal_type": "k8s_event",
+      "query_or_id": "Started: Container started",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": false
+}

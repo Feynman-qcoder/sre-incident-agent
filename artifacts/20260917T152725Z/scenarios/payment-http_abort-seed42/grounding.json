@@ -1,0 +1,15 @@
+{
+  "grounding_score": 0.875,
+  "verified": 7,
+  "total": 8,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "payment",
+      "signal_type": "metric",
+      "query_or_id": "get_service_topology",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": false
+}

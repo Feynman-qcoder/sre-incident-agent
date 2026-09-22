@@ -1,0 +1,91 @@
+{
+  "incident_id": "watchdog-KubePodNotReady-0e3c8389",
+  "investigation_start_ts": "2026-09-18T10:32:57.981496+00:00",
+  "investigation_end_ts": "2026-09-18T10:33:34.822537+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "The product-catalog pod (product-catalog-5bb7676754-hcfpv) consumes ~2.1 CPU cores — roughly 20x every other otel-demo service pod — while remaining error-free, a classic CPU saturation signature. This starvation stalls request handling (multi-second to tens-of-seconds latencies) and most plausibly causes readiness probes to fail, marking the pod NotReady for the watchdog.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\"}[2m]))",
+          "observed_value": "product-catalog-5bb7676754-hcfpv mean=2.123, p99=2.445, max=2.457 cores; next highest frontend-76cbddfbcc-vftwb max=0.123, all others <=0.066",
+          "expected_baseline": "<0.15 cores for a service pod (all other otel-demo pods 0.000-0.123)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=product-catalog, min_duration_ms=1000)",
+          "observed_value": "20 traces, 0 errors, p95_duration=72752ms; top spans 34b4cee0322e8bd0 user_browse_product 15000ms, e3b9657d6b5d250e user_get_ads 15001ms, e467d41296fd03ef user_browse_product 15000ms",
+          "expected_baseline": "p95 < ~100ms for product-catalog under normal operation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "product-catalog error_rate=0.000 (mean/p50/p95/p99/max all 0.000)",
+          "expected_baseline": "error_rate < 0.01 — confirms saturation/latency, not an error-abort fault"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog server spans exhibit extreme latency (p95 ~30-72s; individual 15-30s operations) with zero errors, which on its own matches a high_latency fault and is most plausibly the downstream symptom of the CPU saturation above.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=product-catalog, error_only=true)",
+          "observed_value": "20 traces, 0 with errors, p95_duration=30752ms (27cc9c90eb8d2f37 user_index 15000ms, 479532aee1e0d49c user_add_to_cart 30001ms, 1b2653e72acf935f user_browse_product 15001ms)",
+          "expected_baseline": "p95_duration < ~100ms and near-zero errors"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "no datapoints returned for the p99 latency series during the window",
+          "expected_baseline": "p99 latency < 100ms with continuous datapoints"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "quote",
+      "fault_type": "pod_crash",
+      "description": "Kubernetes events in the window show the quote container being killed/restarted and repeated image-pull failures (ErrImagePull/ImagePullBackOff), consistent with a pod being recreated and failing to reach Ready; however quote shows no metric or trace anomaly, making this a weak/secondary signal for the KubePodNotReady watchdog.",
+      "confidence": 0.13,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, since_seconds=600)",
+          "observed_value": "Killing: Container quote definition changed, will be restarted (count=1); Failed: Error: ImagePullBackOff (count=2); Failed: Error: ErrImagePull (count=2); BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\" (count=2)",
+          "expected_baseline": "no kill/restart or image-pull failure events"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\"}[5m]))",
+          "observed_value": "quote-5b8b4784fd-98pks = 0.000 restarts (all otel-demo pods 0.000)",
+          "expected_baseline": "0 restarts — indicates no completed crash-loop captured in the metric window"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm CPU saturation on product-catalog: kubectl top pod -n otel-demo product-catalog-5bb7676754-hcfpv and compare actual CPU usage against its requests/limits.",
+    "If a cpu_stress/CPU-burn fault is injected against product-catalog, stop the fault injection (or scale out replicas / raise CPU limits) to relieve core starvation.",
+    "Review product-catalog readiness/liveness probe timeout and failure thresholds so transient CPU saturation does not mark the pod NotReady (KubePodNotReady).",
+    "Investigate the quote pod recreation event and the image pull failures for gcr.io/google-containers/pause:latest; verify registry reachability, imagePullSecrets and pull policy.",
+    "After remediation, re-run search_traces on product-catalog and re-check error_rate/duration histograms to confirm end-to-end latency recovery."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.75,
+  "latency_s": 36.841041,
+  "cost_usd": 0.00489545,
+  "total_prompt_tokens": 8269,
+  "total_completion_tokens": 1906,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

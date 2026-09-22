@@ -1,0 +1,114 @@
+{
+  "incident_id": "shipping-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T06:27:53.640572+00:00",
+  "investigation_end_ts": "2026-09-18T06:28:22.286995+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "The shipping service exhibits a severe server-side latency anomaly (p99 mean ~5.7s, peaking at 9650ms vs ~2ms baseline) while its error rate, CPU, memory and pod restarts all remain normal and its only downstream dependency (quote) stays healthy at ~1.98ms. This isolates the fault to an injected/in-process latency within shipping itself, which then propagates upstream to checkout and frontend.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency mean=5700.15ms, p50=4952.5ms, p95=9510ms, p99=9622ms, max=9650ms",
+          "expected_baseline": "shipping server-span p99 ~2ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "quote p99 = 1.98ms (mean=p50=p95=p99=1.98)",
+          "expected_baseline": "~2ms (healthy) — downstream dependency is NOT the cause"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.004, max=0.012",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "cpu usage flat at 0.002 (no spike)",
+          "expected_baseline": "no CPU saturation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"shipping-.*\"})",
+          "observed_value": "memory ~12.53MB, flat (max 12.70MB)",
+          "expected_baseline": "no memory growth/pressure"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts = 0 across window",
+          "expected_baseline": "0 restarts"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99 = 9950ms (propagated)",
+          "expected_baseline": "checkout p99 low; latency is propagated from shipping"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"shipping\"} |= \"error\"",
+          "observed_value": "no error logs found in window",
+          "expected_baseline": "no error logs — consistent with latency-only fault"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout shows elevated p99 (~9950ms) and is a direct caller of shipping, but this is a propagated symptom: checkout's error rate is 0 and its other downstreams (payment ~4.9ms, quote ~1.98ms) are healthy. Not the origin of the fault.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99 = 9950ms (p50=p95=p99=9950)",
+          "expected_baseline": "low (< hundreds of ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate = 0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend p99 is elevated (~8080ms) because it fans out to checkout/shipping; it is purely a downstream symptom of the shipping latency injection, with no resource or error anomaly of its own.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "frontend p99 mean=4951.9ms, p50=7357ms, p99=8080.5ms, max=8133ms",
+          "expected_baseline": "low; elevated here reflects propagated latency from shipping"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm a latency fault-injection / feature flag is active on the shipping service (inspect flagd configuration and the shipping deployment for an injected delay) and disable/rollback the fault flag.",
+    "Restart the shipping Deployment/pods to clear any injected in-process delay, then verify shipping server-span p99 returns to the ~2ms baseline.",
+    "Verify recovery propagates upstream: confirm checkout p99 and frontend p99 return to normal and that error rates remain at 0.",
+    "Add a p99 latency SLO alert on shipping server spans (threshold well above ~2ms baseline) to detect future latency injections earlier."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 28.646423,
+  "cost_usd": 0.0040722499999999995,
+  "total_prompt_tokens": 6685,
+  "total_completion_tokens": 1650,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

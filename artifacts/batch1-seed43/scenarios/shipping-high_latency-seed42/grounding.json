@@ -1,0 +1,15 @@
+{
+  "grounding_score": 0.8889,
+  "verified": 8,
+  "total": 9,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "shipping",
+      "signal_type": "k8s_event",
+      "query_or_id": "get_pod_events pod_name_prefix=shipping (Successfully update ObservedGeneration and FailedMessage of resource)",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": false
+}

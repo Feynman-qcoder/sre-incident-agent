@@ -1,0 +1,3 @@
+2026-09-17 18:57:24 [info     ] alert_seen                     active_at=2026-09-17T10:57:10.696028+00:00 alertname=OtelDemoHighLatencyP99 fingerprint=c2dddb31 namespace=otel-demo service=
+2026-09-17 18:57:24 [info     ] investigation_started          alertname=OtelDemoHighLatencyP99 fault_type_hint=high_latency incident_id=watchdog-OtelDemoHighLatencyP99-c2dddb31 service= window_end=2026-09-17T10:57:24.709704+00:00 window_start=2026-09-17T10:55:10.696028+00:00
+2026-09-17 19:00:12 [info     ] investigation_complete         cost_usd=0.0073542 incident_id=watchdog-OtelDemoHighLatencyP99-c2dddb31 latency_s=167.831229 report_path=artifacts/watchdog/20260917T110012Z_OtelDemoHighLatencyP99_.json top_fault_type=high_latency top_service=frontend wall_latency_s=167.8

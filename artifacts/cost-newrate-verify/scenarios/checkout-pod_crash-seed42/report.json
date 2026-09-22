@@ -1,0 +1,90 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T08:23:03.350973+00:00",
+  "investigation_end_ts": "2026-09-18T08:23:22.739121+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed and restarted ('Killing: Stopping container checkout' -> 'Started'), producing 3 container restarts in the 5m window. During the crash/restart the checkout server span error rate spiked to 0.92 while its served request rate collapsed to ~0.10 req/s, confirming the checkout pod is the failing service.",
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.92 (mean=p50=p99=0.92 over window)",
+          "expected_baseline": "error_rate ~0.00 (frontend=0.00, payment=0.00 over same window)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=3 (max) in 5m",
+          "expected_baseline": "0 restarts for stable pods"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.10 req/s (traffic collapsed)",
+          "expected_baseline": "checkout normally serves a substantially higher request rate; collapsed traffic indicates serving outage"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Stopping container checkout (count=1)",
+          "observed_value": "container checkout stopped/killed in namespace otel-demo",
+          "expected_baseline": "no container kill events during steady state"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout sits in the call path of multiple downstream dependencies (cart, payment, email, shipping, currency, product-catalog); a crash-driven restart could manifest as downstream call failures. However, downstream services (payment) showed no error spike, so this is a weaker alternative explanation.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "payment error_rate=0.00",
+          "expected_baseline": "0.00 — downstream payment is healthy, arguing against a downstream-caused failure"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Alternative hypothesis that checkout latency rather than crashes drove the failure. No latency instrumentation evidence was collected in this window and CPU/memory stayed flat (cpu=0.05, memory=1e8 constant), making a resource-driven latency fault unlikely.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.05 (flat, no anomaly)",
+          "expected_baseline": "stable ~0.05; no CPU saturation to explain latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "memory_usage=100000000 bytes (constant, no anomaly)",
+          "expected_baseline": "stable ~1e8 bytes; no memory growth to trigger OOM/latency"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the checkout Deployment/pod status and describe the checkout container to confirm the crash/restart cause (exit code, OOMKilled, ImagePullBackOff).",
+    "Check container resource limits and recent spec changes to the checkout Deployment; roll back any recent change that triggered the kill/restart loop.",
+    "Review checkout container logs around 2024-01-15T13:59-14:06 for panic/fatal/startup errors and fix the failing start path.",
+    "Restore checkout replica availability and verify request rate recovers from ~0.10 req/s and error rate returns to ~0.00."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 19.388148,
+  "cost_usd": 0.0015632999999999999,
+  "total_prompt_tokens": 5550,
+  "total_completion_tokens": 1218,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,13 @@
+{
+  "scenario_id": "payment-network-partition-seed42",
+  "fault_service": "payment",
+  "fault_type": "http_abort",
+  "chaos_kind": "NetworkChaos",
+  "injection_ts": "2026-09-18T07:56:42.322114+00:00",
+  "recovery_ts": "2026-09-18T08:01:43.605304+00:00",
+  "seed": 42,
+  "chaos_manifest_hash": "e05802af21461d0b",
+  "window_start": "2026-09-18T07:55:42.322114+00:00",
+  "window_end": "2026-09-18T08:02:43.605304+00:00",
+  "validation_passed": false
+}

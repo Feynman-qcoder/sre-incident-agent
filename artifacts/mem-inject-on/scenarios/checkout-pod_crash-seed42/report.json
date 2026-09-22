@@ -1,0 +1,102 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T05:59:35.672320+00:00",
+  "investigation_end_ts": "2026-09-18T05:59:57.002458+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed ('Container checkout definition changed, will be restarted'), and the replacement pod cannot start because its sandbox image gcr.io/google-containers/pause:latest fails to pull with DeadlineExceeded, leaving the pod in ErrImagePull/ImagePullBackOff. As a result checkout serves no traffic (server request rate collapses to ~0) and its callers (frontend, accounting, fraud-detection) are impacted.",
+      "confidence": 0.86,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=1)",
+          "observed_value": "count=1 kill event on checkout pod during window",
+          "expected_baseline": "no container kill events during steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a",
+          "observed_value": "ErrImagePull count=3, ImagePullBackOff count=4, BackOff count=4",
+          "expected_baseline": "sandbox image pulls succeed; pod becomes Ready"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.018 req/s, p95=0.057, max=0.057 (traffic collapsed)",
+          "expected_baseline": "steady-state checkout server request rate well above 0.1 req/s"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no checkout server spans emitted at all)",
+          "expected_baseline": "nonzero server span throughput; absence of spans indicates pod is down"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.063, p95=0.145, max=0.171 on upstream caller frontend",
+          "expected_baseline": "frontend error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Frontend, a direct caller of checkout, shows an elevated server error rate during the window; this is a downstream-propagation symptom of the checkout outage rather than an independent fault, and no frontend error traces were recorded.",
+      "confidence": 0.35,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.063, p95=0.145, max=0.171",
+          "expected_baseline": "frontend error_rate < 0.01"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=frontend, error_only=True, 2026-09-16T07:34:41.978603+00:00-2026-09-16T07:41:42.217372+00:00)",
+          "observed_value": "no traces found",
+          "expected_baseline": "error traces present when frontend is the failing origin"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "unknown",
+      "description": "Alternative: a resource-pressure driven termination (e.g. CPU stress/OOM) could have triggered the restart, but measured checkout CPU is negligible and no restart counters fired, so this is not supported by the evidence.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "mean=0.001, max=0.003 cores (negligible)",
+          "expected_baseline": "no CPU saturation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "max=0 restarts in window",
+          "expected_baseline": "0 in steady state"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm checkout pod state: kubectl get pods -n otel-demo -l app=checkout and check for ImagePullBackOff / ErrImagePull and restart counts.",
+    "Roll back the checkout Deployment to the previous working container definition — the kill event 'Container checkout definition changed, will be restarted' shows a recent spec change triggered the outage.",
+    "Fix the sandbox/pause image pull path: the pull of gcr.io/google-containers/pause:latest fails with DeadlineExceeded — verify registry connectivity/DNS, use an accessible mirror or pre-pulled image, or set imagePullPolicy: IfNotPresent.",
+    "Once the pod becomes Ready, verify recovery by confirming checkout server request rate returns to baseline and frontend error rate drops below 0.01."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.7778,
+  "latency_s": 21.330138,
+  "cost_usd": 0.003752,
+  "total_prompt_tokens": 5644,
+  "total_completion_tokens": 1692,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

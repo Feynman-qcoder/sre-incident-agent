@@ -1,0 +1,34 @@
+metadata:
+  scenario_id: product-catalog-high_latency-seed42
+  fault_service: product-catalog
+  fault_type: high_latency
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Network latency injection on product-catalog (1500ms ± 300ms delay). The delay must
+    clearly exceed this cluster's noisy multi-second baseline p99 for the culprit to be a
+    discriminative outlier (a 200ms delay was lost in the noise — gate FAIL).
+    Expected signal: p99 latency spike, cascading latency to recommendation and checkout.
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: NetworkChaos
+  metadata:
+    name: product-catalog-latency-seed42
+    namespace: chaos-mesh
+  spec:
+    action: delay
+    mode: all
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: product-catalog
+    delay:
+      latency: "1500ms"
+      jitter: "300ms"
+      correlation: "25"
+    duration: "300s"
+    direction: to

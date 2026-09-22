@@ -1,0 +1,96 @@
+{
+  "incident_id": "product-catalog-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T05:50:30.869196+00:00",
+  "investigation_end_ts": "2026-09-18T05:50:59.653084+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog exhibits a severe, sustained server-side latency spike with p99 saturating at ~10000ms while CPU, memory, and error rate remain normal, indicating an injected/artificial latency fault in the product-catalog leaf service. Upstream callers (frontend, checkout, recommendation) inherit the added latency.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000, mean=7716.873 ms",
+          "expected_baseline": "p99 ~= 6 ms (healthy leaf service, e.g. cart p99=5.958 ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=2.836 p50=1.980 p95=5.790 p99=5.958 max=6.000 ms",
+          "expected_baseline": "confirms ~6 ms is the normal server-side p99 for a healthy peer service"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.027 p50=0.026 p95=0.039 max=0.040 cores",
+          "expected_baseline": "flat/normal CPU usage — rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=24446293.333 ~24.4 MB flat, max=24985600.000 bytes",
+          "expected_baseline": "flat/normal memory usage — rules out memory_stress / OOM"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 (zero server errors throughout window)",
+          "expected_baseline": "no error spike — rules out http_abort / dependency_failure"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000, mean=7594.447 ms",
+          "expected_baseline": "frontend latency elevated only because it calls product-catalog (downstream propagation, not origin)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Frontend server-side latency is saturated at ~10000ms, but topology shows frontend calls product-catalog, so this is propagation of the product-catalog latency fault rather than an independent frontend fault.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000, mean=7594.447 ms",
+          "expected_baseline": "frontend p99 should track caller latency, not origin; elevated due to product-catalog dependency"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout depends on product-catalog per topology; it can exhibit elevated latency from the same root cause, but no independent anomaly was confirmed for checkout in this window.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=2.836 p50=1.980 p95=5.790 p99=5.958 max=6.000 ms",
+          "expected_baseline": "healthy peer latency ~6 ms — bounds the fault to the product-catalog leaf, not shared infrastructure"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect product-catalog deployment/config for an injected latency fault (e.g. flagd feature flag or chaos experiment affecting the catalog handler) and disable it.",
+    "Rolling-restart the product-catalog pods to clear any in-process artificial delay and confirm p99 returns to ~6 ms.",
+    "Verify recovery by re-checking product-catalog server-side p99 latency and confirming frontend/checkout latency returns to baseline.",
+    "Add/verify SLO alerting on product-catalog server-side p99 to catch latency injection early."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 28.783888,
+  "cost_usd": 0.003227,
+  "total_prompt_tokens": 5134,
+  "total_completion_tokens": 1362,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

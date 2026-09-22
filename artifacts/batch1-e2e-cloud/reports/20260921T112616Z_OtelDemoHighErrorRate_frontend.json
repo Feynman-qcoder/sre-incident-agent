@@ -1,0 +1,114 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-549ee968",
+  "investigation_start_ts": "2026-09-21T11:25:30.725939+00:00",
+  "investigation_end_ts": "2026-09-21T11:26:16.561487+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend edge service exhibits a severe p99 tail-latency spike (max ~7004 ms, approaching the ~7 s request timeout ceiling) while p50/p95 stay ~23-25 ms, so a subset of edge requests stall until they time out/abort, generating a sustained server-side error rate. All downstream dependencies report zero server errors, localizing the fault to the frontend edge (consistent with an injected latency/timeout fault).",
+      "confidence": 0.66,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=530.9ms, max=7004.377ms (p50=23.377ms, p95=24.943ms); anomaly window 1789982605-1789985785",
+          "expected_baseline": "p99 < ~50ms with no tail beyond p95 (steady-state p50/p95 ~23-25ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=1.289 req/s sustained error rate",
+          "expected_baseline": "error_rate < 0.01 (clean baseline)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000 (checkout: zero server errors)",
+          "expected_baseline": "0 — confirms fault is not propagating from checkout/downstream"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000 (cart: zero server errors)",
+          "expected_baseline": "0 — downstream dependency healthy"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "e6284f684c80a610",
+          "observed_value": "frontend user_get_ads handler span = 1856ms (search_traces min_duration_ms=1000; 20 traces, p95_duration=1770079ms)",
+          "expected_baseline": "frontend handler spans ~3-10ms (ok traces measured at 3-10ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "0.0227 CPU cores (not saturated)",
+          "expected_baseline": "no CPU saturation; rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "max=0.000 (no restarts)",
+          "expected_baseline": "0 restarts — rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "Alternative interpretation: requests exceeding the ~7 s ceiling are aborted at the frontend edge, producing the sustained server-side error ratio (~60% of incoming requests) with clean downstream dependencies, consistent with an injected HTTP abort rather than propagated failure.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=1.289 req/s error rate sustained across full window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "max=7004.377ms tail straddling ~7s timeout ceiling",
+          "expected_baseline": "no spans beyond p95 (~25ms)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=frontend error_only=True",
+          "observed_value": "20 traces returned, 0 with errors, p95_duration=10ms",
+          "expected_baseline": "if errors were downstream-propagated, error spans would appear here"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "ad",
+      "fault_type": "high_latency",
+      "description": "Weaker hypothesis: the frontend's ad path (user_get_ads) shows elevated latency (1856ms), so a slow 'ad' dependency could contribute to edge stalls; however no ad-service server errors were observed and the evidence is indirect.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "e6284f684c80a610",
+          "observed_value": "frontend user_get_ads span = 1856ms",
+          "expected_baseline": "frontend handler spans ~3-10ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Audit the active flagd feature-flag configuration for a frontend latency/timeout injection flag and disable it to validate the root cause.",
+    "Capture and inspect frontend request traces/logs during the latency window to identify the specific handler or downstream call stalling to the ~7s timeout.",
+    "If no flag injection is found, add edge-side circuit-breaking/timeout tuning on frontend handlers (e.g. user_get_ads) and consider horizontal scaling of the frontend deployment to shed tail-latency stalls.",
+    "Monitor frontend p99 latency and server error rate after mitigation to confirm p99 returns to < ~50ms and error_rate < 0.01."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.85,
+  "latency_s": 45.835548,
+  "cost_usd": 0.00450275,
+  "total_prompt_tokens": 6391,
+  "total_completion_tokens": 2158,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

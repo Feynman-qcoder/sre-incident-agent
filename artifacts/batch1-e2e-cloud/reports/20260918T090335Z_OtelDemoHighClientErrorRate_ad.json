@@ -1,0 +1,96 @@
+{
+  "incident_id": "watchdog-OtelDemoHighClientErrorRate-11ae2a2b",
+  "investigation_start_ts": "2026-09-18T09:03:02.650346+00:00",
+  "investigation_end_ts": "2026-09-18T09:03:35.596294+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend shows a severe latency regression: server-side p99 latency is pegged at 10000ms and user-facing spans (user_browse_product, user_get_recommendations) last ~15000ms. Frontend is also the only service in the cluster with a nonzero server error rate, consistent with client-facing slow responses/timeouts on the request path.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms (mean=p50=p95=p99=max=10000ms)",
+          "expected_baseline": "p99 < 1000 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate max=0.019, mean=0.002 (only nonzero service in cluster; all others 0.000)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "6fa2744b70f292c7",
+          "observed_value": "user_browse_product duration=15000ms, status=ok",
+          "expected_baseline": "user_browse_product < 1000ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "3131b1fd7de82d21",
+          "observed_value": "user_browse_product duration=15000ms, status=ok",
+          "expected_baseline": "user_browse_product < 1000ms"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout spans carry the same ~15000ms durations as frontend (search p95_duration=46513ms) while its server error rate is 0.000, indicating checkout is blocked waiting on a slow downstream dependency (cart, payment, email, shipping, currency, or product-catalog) rather than failing on its own.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "a66175ffa472571b",
+          "observed_value": "user_browse_product duration=15000ms, status=ok",
+          "expected_baseline": "checkout span < 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no server errors; consistent with blocking, not failing)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.028 (p95=0.030) — no CPU anomaly",
+          "expected_baseline": "cpu_usage stable, no throttling spike"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "Recommendation sits on the slow request path (frontend → recommendation → product-catalog) and its user_get_recommendations call spanned ~15000ms, making it a candidate downstream source of the latency propagated to frontend and checkout.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "468ff74b22f13ce9",
+          "observed_value": "user_get_recommendations duration=14999ms, status=ok",
+          "expected_baseline": "recommendation span < 500ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Isolate the slow downstream: compare per-service p99 latency for frontend's and checkout's downstreams (recommendation, product-catalog, cart, shipping, currency, payment, email) to find the single slow dependency.",
+    "Check frontend and downstream pods for CPU throttling / resource limits and verify request/upstream timeouts so slow calls do not pin requests at ~15s (frontend p99 pegged at 10s).",
+    "Roll back or restart the implicated downstream service if a latency fault or bad deploy is active in the 08:55–09:01 window.",
+    "Add alerting on frontend p99 latency and trace-duration SLOs to catch the regression before it surfaces as client-facing timeouts."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.6,
+  "latency_s": 32.945948,
+  "cost_usd": 0.0044751,
+  "total_prompt_tokens": 7170,
+  "total_completion_tokens": 1872,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

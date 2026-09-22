@@ -1,0 +1,15 @@
+{
+  "grounding_score": 0.875,
+  "verified": 7,
+  "total": 8,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "frontend",
+      "signal_type": "k8s_event",
+      "query_or_id": "Created pod: frontend-76cbddfbcc-zm8l8",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": false
+}

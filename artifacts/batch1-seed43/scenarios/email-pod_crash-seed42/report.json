@@ -1,0 +1,90 @@
+{
+  "incident_id": "email-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T09:25:04.287766+00:00",
+  "investigation_end_ts": "2026-09-18T09:25:37.542891+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "email",
+      "fault_type": "pod_crash",
+      "description": "The email service (a leaf downstream of checkout) shows container lifecycle churn with its memory working set fluctuating sharply between a ~40MB median and a ~154MB peak across the window, consistent with the container restarting in a crash loop while error/CPU metrics for its callers stay nominal. This matches the known email pod_crash pattern in which Kubernetes repeatedly restarts the failing email container.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"email-.*\"})",
+          "observed_value": "mean=63279104, p50=40583168, p95=154060800, p99=154095206, max=154103808 bytes — working set swings ~4x above the ~40MB median up to ~154MB",
+          "expected_baseline": "stable ~40583168 bytes (p50) with low variance for a healthy idle leaf service"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"email-.*\"}[5m])) or vector(0)",
+          "observed_value": "max=0.000 across window (no restart delta captured in this 5m sampling window)",
+          "expected_baseline": "0 restarts for a healthy pod"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"email\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "email error_rate=0.000 (no error propagation from the leaf)",
+          "expected_baseline": "leaf service, error_rate ~0"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "email",
+      "fault_type": "memory_stress",
+      "description": "The only clearly anomalous metric in the sweep is email's container memory working set, which spikes from a ~40MB median to ~154MB. If the container is not restarting, this could instead reflect an injected memory-pressure/stress fault on the email container.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"email-.*\"})",
+          "observed_value": "mean=63279104, p95=154060800, max=154103808 bytes vs p50=40583168 bytes",
+          "expected_baseline": "memory working set stable near ~40583168 bytes (p50)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"email-.*\"}[2m]))",
+          "observed_value": "mean=0.000, p99=0.001 (CPU not elevated)",
+          "expected_baseline": "near-zero idle CPU, so memory is the dominant stress signal"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "unknown",
+      "description": "frontend was the only service with a non-zero (though tiny) server error rate in the sweep (mean 0.003, p95/p99 0.010), which could reflect minor propagated noise rather than a true fault origin; no CPU, memory, or restart anomaly was observed.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.003, p95=0.010, p99=0.010, max=0.010",
+          "expected_baseline": "error_rate < 0.01 for a healthy frontend"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.015, p99=0.020",
+          "expected_baseline": "normal frontend CPU, no resource anomaly"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the email pod (email-*) with kubectl describe to read the restart/back-off events and container exit codes, and confirm whether the container is in CrashLoopBackOff.",
+    "Review the email container spec/ConfigMap for a recent 'container definition changed' trigger and roll back the change that forced the container restart.",
+    "Check the email container memory limits/requests and logs for OOMKilled or unhandled-exception exits; raise limits or fix the crashing code path accordingly.",
+    "Monitor email error_rate, container_memory_working_set_bytes and kube_pod_container_status_restarts_total after the fix to confirm the crash loop has cleared."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 33.255125,
+  "cost_usd": 0.0020469,
+  "total_prompt_tokens": 7478,
+  "total_completion_tokens": 1542,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

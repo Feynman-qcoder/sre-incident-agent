@@ -1,0 +1,4 @@
+2026-09-17 21:54:21 [info     ] alert_seen                     active_at=2026-09-17T13:54:19.685975+00:00 alertname=KubePodNotReady fingerprint=3d474e83 namespace=otel-demo service=checkout
+2026-09-17 21:54:21 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady reason=same_cycle remaining_min=45 service=checkout
+2026-09-17 21:54:21 [info     ] investigation_started          alertname=KubePodNotReady fault_type_hint=pod_crash incident_id=watchdog-KubePodNotReady-3d474e83 service=checkout window_end=2026-09-17T13:54:21.563625+00:00 window_start=2026-09-17T13:52:19.685975+00:00
+2026-09-17 21:54:48 [info     ] investigation_complete         cost_usd=0.00337505 incident_id=watchdog-KubePodNotReady-3d474e83 latency_s=26.367673 report_path=artifacts/watchdog/20260917T135448Z_KubePodNotReady_checkout.json top_fault_type=pod_crash top_service=checkout wall_latency_s=26.4

@@ -1,0 +1,15 @@
+{
+  "fingerprints": {
+    "b47b613b": {
+      "alertname": "OtelDemoHighLatencyP99",
+      "service": "cart",
+      "last_investigated_at": "2026-09-17T14:49:25.941469+00:00"
+    }
+  },
+  "recent_investigations": [
+    "2026-09-17T14:49:25.941469+00:00"
+  ],
+  "service_last_investigated": {
+    "cart": "2026-09-17T14:49:25.941469+00:00"
+  }
+}

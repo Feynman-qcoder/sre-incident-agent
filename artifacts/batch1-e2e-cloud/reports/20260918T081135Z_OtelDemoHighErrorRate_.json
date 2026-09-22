@@ -1,0 +1,115 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-3a0d3ec3",
+  "investigation_start_ts": "2026-09-18T08:10:51.306838+00:00",
+  "investigation_end_ts": "2026-09-18T08:11:35.202661+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "Frontend is the only service with a server-side error-rate spike (max ~3.02/s, p99 ~0.90/s) during the incident window; all downstream dependencies (checkout, cart, payment, product-catalog, recommendation, shipping, currency, ad) show zero server errors. No CPU, memory, or restart anomalies accompany it, indicating locally aborted/5xx request handling at the frontend rather than a downstream dependency failure.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.051 p50=0.000 p95=0.114 p99=0.901 max=3.019 | anomaly [1789709335.817→1789713745.817]",
+          "expected_baseline": "error_rate < 0.01 (other services steady at 0.000)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.005 p50=0.000 p95=0.029 p99=0.038 max=0.057 | no anomaly detected",
+          "expected_baseline": "< 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000 p50=0.000 p95=0.000 p99=0.000 max=0.000 | no anomaly detected",
+          "expected_baseline": "0.000"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000 p50=0.000 p95=0.000 p99=0.000 max=0.000 | no anomaly detected",
+          "expected_baseline": "0.000"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu mean=0.017 p50=0.016 p95=0.020 p99=0.023 max=0.041 | no anomaly detected",
+          "expected_baseline": "< 0.05 cores, no spike"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts mean=0.000 p50=0.000 p95=0.000 p99=0.000 max=0.000 | no anomaly detected",
+          "expected_baseline": "0 restarts"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Updated: Successfully update ObservedGeneration and FailedMessage of resource (count=1)",
+          "observed_value": "Only a routine ObservedGeneration/FailedMessage update event for frontend pods; no crash/kill events",
+          "expected_baseline": "no pod failure events"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend trace data shows abnormally long request durations (~15s spans, p95 ~30s) on user_browse_product and user_get_recommendations flows, which can force client timeouts and surface as frontend errors. This is a plausible alternative if the injected fault is latency rather than an explicit abort.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=frontend, error_only=True)",
+          "observed_value": "20 total, 0 with errors, p95_duration=30006ms; top spans user_browse_product=15000ms, user_browse_product=15001ms, user_get_recommendations=15001ms | ok",
+          "expected_baseline": "sub-second browse/recommendation spans"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 mean=9977.393 p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000 | no anomaly detected",
+          "expected_baseline": "low-ms frontend server latency"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "recommendation",
+      "fault_type": "dependency_failure",
+      "description": "The slow recommendation/browse flows in frontend traces traverse the recommendation → product-catalog path, so a fault in this downstream chain could drive frontend timeouts. However, both recommendation and product-catalog report zero server errors, making this a weaker hypothesis.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 mean=9947.052 p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000 | no anomaly detected",
+          "expected_baseline": "low-ms recommendation latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 mean=8350.864 p50=10000.000 p95=10000.000 p99=10000.000 max=10000.000 | no anomaly detected",
+          "expected_baseline": "low-ms catalog latency"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect frontend pod logs and access logs during 04:40–08:10 UTC for aborted/5xx responses to confirm local request abortion.",
+    "Identify any chaos/fault injection applied to the frontend workload (e.g., HTTP abort experiment) in the otel-demo namespace and roll it back.",
+    "Verify frontend readiness/health probes and rolling-restart the frontend deployment to clear any stuck aborted-request state.",
+    "Add alerting on frontend error-rate and 15s+ browse/recommendation request durations to catch recurrence early.",
+    "If latency-driven, review frontend timeouts and the recommendation → product-catalog call path for upstream timeout misconfiguration."
+  ],
+  "fault_type_classification": "http_abort",
+  "grounding_score": 0.7,
+  "latency_s": 43.895823,
+  "cost_usd": 0.0051667,
+  "total_prompt_tokens": 7994,
+  "total_completion_tokens": 2256,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

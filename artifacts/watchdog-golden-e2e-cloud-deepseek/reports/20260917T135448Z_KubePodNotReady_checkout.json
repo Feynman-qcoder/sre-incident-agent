@@ -1,0 +1,91 @@
+{
+  "incident_id": "watchdog-KubePodNotReady-3d474e83",
+  "investigation_start_ts": "2026-09-17T13:54:21.773490+00:00",
+  "investigation_end_ts": "2026-09-17T13:54:48.141163+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout pod entered a KubePodNotReady state because its container was killed/restarted (definition changed) and the pod sandbox repeatedly failed to pull its pause image, producing ImagePullBackOff and preventing the pod from becoming Ready.",
+      "confidence": 0.63,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+          "observed_value": "count=2 in 10m window",
+          "expected_baseline": "0 container kill/restart events for checkout"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff",
+          "observed_value": "count=5",
+          "expected_baseline": "0 image pull failures"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off pulling image \"gcr.io/google-containers/pause:latest\"",
+          "observed_value": "count=5",
+          "expected_baseline": "0 backoff events"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "d25aee6dd0a6f77c",
+          "observed_value": "user_checkout_multi, p95_duration=20766ms",
+          "expected_baseline": "checkout span duration < 100ms"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "The checkout pod's sandbox container repeatedly failed to pull the pause image from the registry (DeadlineExceeded / ErrImagePull), a registry/network dependency failure that blocks pod readiness independently of the app container.",
+      "confidence": 0.34,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a",
+          "observed_value": "count=2, DeadlineExceeded",
+          "expected_baseline": "successful image pull"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ErrImagePull",
+          "observed_value": "count=4",
+          "expected_baseline": "0 ErrImagePull"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "Frontend showed a small but non-zero server error rate during the window, likely downstream propagation/noise rather than the primary fault.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.027, p95=0.095, max=0.114",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the checkout pod spec/ReplicaSet change and roll back the last container definition change that triggered the restart.",
+    "Verify registry reachability and credentials for the pause/sandbox image; re-pull or use a cached/mirrored image to clear ImagePullBackOff.",
+    "Delete the stuck checkout pod so the kubelet re-creates a fresh sandbox; confirm the pod reaches Ready.",
+    "Check the node's kubelet/container runtime and network path to the image registry for the DeadlineExceeded pull errors.",
+    "Monitor checkout error_rate, request_rate, and kube_pod_container_status_restarts_total to confirm recovery."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.75,
+  "latency_s": 26.367673,
+  "cost_usd": 0.00337505,
+  "total_prompt_tokens": 6187,
+  "total_completion_tokens": 1152,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

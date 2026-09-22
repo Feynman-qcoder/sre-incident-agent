@@ -1,0 +1,102 @@
+{
+  "incident_id": "payment-network-partition-seed42",
+  "investigation_start_ts": "2026-09-18T09:31:03.973093+00:00",
+  "investigation_end_ts": "2026-09-18T09:31:33.386646+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "dependency_failure",
+      "description": "A network partition isolating the payment service prevents checkout's outbound gRPC call to payment from ever completing, so the frontend request chain blocks until its 10s deadline. Because the fault is at the network boundary, payment emits no completed or errored server spans and its own request_rate/error_rate/resource metrics stay at zero.",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "frontend p99_latency_ms=10000.000 (mean=p50=p95=p99=max=10000)",
+          "expected_baseline": "frontend p99 < ~100ms (well below the 10s client deadline)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "payment request_rate=0.000",
+          "expected_baseline": "payment request_rate > 0 (steady inbound gRPC from checkout)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "checkout request_rate=0.000 while frontend request_rate=0.444",
+          "expected_baseline": "checkout request_rate roughly tracks frontend request_rate"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "payment error_rate=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Successfully update ObservedGeneration and FailedMessage of resource",
+          "observed_value": "payment pod event: flagd flag reconciliation (count=1, x2) — only k8s activity on payment pods",
+          "expected_baseline": "no flagd fault-flag reconciliation on payment pods absent an injected fault"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "payment",
+      "fault_type": "http_abort",
+      "description": "Alternative: an HTTP-boundary abort on payment (e.g., flagd-injected) could likewise prevent checkout's gRPC call from ever completing, producing the same 10s frontend deadline block while payment records no completed server span.",
+      "confidence": 0.35,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "frontend p99_latency_ms=10000.000",
+          "expected_baseline": "frontend p99 < ~100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "payment request_rate=0.000 (no completed server span emitted)",
+          "expected_baseline": "payment request_rate > 0"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "As a consequence (not root cause), checkout blocks on its downstream payment call and never returns within the window, so it emits no completed server spans; this is propagation of the payment boundary fault rather than an independent checkout defect.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "checkout request_rate=0.000 (all in-flight calls blocked)",
+          "expected_baseline": "checkout request_rate tracks frontend traffic (~0.44/s)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect and remove/roll back the NetworkPolicy or partition injection isolating the payment pods in namespace otel-demo to restore connectivity between checkout and payment.",
+    "Disable / roll back the flagd flag reconciling on the payment pods (the only k8s activity observed during the window) to clear the injected fault.",
+    "Restart the payment deployment pods to clear any stuck/aborted gRPC connection state and re-establish checkout→payment channels.",
+    "Verify recovery by confirming frontend p99 latency drops from the 10s deadline back to baseline and that checkout/payment server request_rate and spans reappear."
+  ],
+  "fault_type_classification": "dependency_failure",
+  "grounding_score": 1.0,
+  "latency_s": 29.413553,
+  "cost_usd": 0.0019071000000000001,
+  "total_prompt_tokens": 6634,
+  "total_completion_tokens": 1520,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

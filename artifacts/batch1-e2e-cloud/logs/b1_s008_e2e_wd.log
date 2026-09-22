@@ -1,0 +1,431 @@
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_seen                     active_at=2026-09-18T04:42:25.817543+00:00 alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 namespace=otel-demo service=
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:10:51 [info     ] memory_miss                    fault_type=http_abort service=
+2026-09-18 16:10:51 [info     ] investigation_started          alertname=OtelDemoHighErrorRate fault_type_hint=http_abort incident_id=watchdog-OtelDemoHighErrorRate-3a0d3ec3 service= window_end=2026-09-18T08:10:51.089072+00:00 window_start=2026-09-18T04:40:25.817543+00:00
+2026-09-18 16:10:56 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-18 16:10:56 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:10:56 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:10:56 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:10:56 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:11:01 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:11:01 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:11:01 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:11:01 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:11:01 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:11:01 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:11:05 [info     ] tool_call                      iteration=2 name=search_traces
+2026-09-18 16:11:05 [info     ] tool_call                      iteration=2 name=query_loki
+2026-09-18 16:11:05 [info     ] tool_call                      iteration=2 name=get_pod_events
+2026-09-18 16:11:05 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-18 16:11:09 [info     ] tool_call                      iteration=3 name=get_trace
+2026-09-18 16:11:09 [warning  ] tool_error                     error="Client error '404 Not Found' for url 'http://localhost:3200/api/traces/4b93191b41acc1be'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404" tool=get_trace
+2026-09-18 16:11:09 [info     ] tool_call                      iteration=3 name=query_prometheus_range
+2026-09-18 16:11:09 [info     ] tool_call                      iteration=3 name=query_prometheus_range
+2026-09-18 16:11:09 [info     ] tool_call                      iteration=3 name=query_prometheus_range
+2026-09-18 16:11:09 [info     ] tool_call                      iteration=3 name=query_prometheus_range
+2026-09-18 16:11:20 [info     ] tool_call                      iteration=4 name=query_loki
+2026-09-18 16:11:20 [info     ] gateway_deny                   budget=20 reason=budget_exhausted tool=query_loki
+2026-09-18 16:11:20 [info     ] tool_call                      iteration=4 name=search_traces
+2026-09-18 16:11:20 [info     ] gateway_deny                   budget=20 reason=budget_exhausted tool=search_traces
+2026-09-18 16:11:20 [info     ] tool_call                      iteration=4 name=query_prometheus_range
+2026-09-18 16:11:20 [info     ] gateway_deny                   budget=20 reason=budget_exhausted tool=query_prometheus_range
+2026-09-18 16:11:20 [info     ] tool_call                      iteration=4 name=query_prometheus_range
+2026-09-18 16:11:20 [info     ] gateway_deny                   budget=20 reason=budget_exhausted tool=query_prometheus_range
+2026-09-18 16:11:20 [info     ] tool_call                      iteration=4 name=query_prometheus_range
+2026-09-18 16:11:20 [info     ] gateway_deny                   budget=20 reason=budget_exhausted tool=query_prometheus_range
+2026-09-18 16:11:35 [info     ] investigation_complete         cost_usd=0.0051667 incident_id=watchdog-OtelDemoHighErrorRate-3a0d3ec3 latency_s=43.895823 report_path=artifacts/watchdog/20260918T081135Z_OtelDemoHighErrorRate_.json top_fault_type=http_abort top_service=frontend wall_latency_s=43.9
+2026-09-18 16:11:35 [info     ] notification_sent              incident_id=watchdog-OtelDemoHighErrorRate-3a0d3ec3 webhook_host=qyapi.weixin.qq.com
+2026-09-18 16:11:35 [info     ] memory_written                 incident_id=watchdog-OtelDemoHighErrorRate-3a0d3ec3 path=memory/incidents/watchdog-OtelDemoHighErrorRate-3a0d3ec3.md
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=45 service=
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:11:50 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=44 service=
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:05 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=44 service=
+2026-09-18 16:12:20 [info     ] alert_seen                     active_at=2026-09-18T08:12:19.685975+00:00 alertname=KubePodNotReady fingerprint=e170ff2c namespace=otel-demo service=email
+2026-09-18 16:12:20 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady reason=same_cycle remaining_min=45 service=email
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:12:20 [info     ] memory_miss                    fault_type=pod_crash service=email
+2026-09-18 16:12:20 [info     ] investigation_started          alertname=KubePodNotReady fault_type_hint=pod_crash incident_id=watchdog-KubePodNotReady-e170ff2c service=email window_end=2026-09-18T08:12:20.577748+00:00 window_start=2026-09-18T08:10:19.685975+00:00
+2026-09-18 16:12:22 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-18 16:12:22 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:12:22 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:12:24 [info     ] tool_call                      iteration=1 name=get_pod_events
+2026-09-18 16:12:24 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:12:24 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:12:24 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:12:28 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-18 16:12:28 [info     ] tool_call                      iteration=2 name=get_pod_events
+2026-09-18 16:12:33 [info     ] tool_call                      iteration=3 name=query_prometheus_range
+2026-09-18 16:12:33 [info     ] tool_call                      iteration=3 name=query_loki
+2026-09-18 16:12:50 [info     ] investigation_complete         cost_usd=0.00411425 incident_id=watchdog-KubePodNotReady-e170ff2c latency_s=29.987344 report_path=artifacts/watchdog/20260918T081250Z_KubePodNotReady_email.json top_fault_type=pod_crash top_service=email wall_latency_s=30.0
+2026-09-18 16:12:50 [info     ] notification_sent              incident_id=watchdog-KubePodNotReady-e170ff2c webhook_host=qyapi.weixin.qq.com
+2026-09-18 16:12:50 [info     ] memory_written                 incident_id=watchdog-KubePodNotReady-e170ff2c path=memory/incidents/watchdog-KubePodNotReady-e170ff2c.md
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=43 service=
+2026-09-18 16:13:05 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=45 service=email
+2026-09-18 16:13:05 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=45 service=email
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:05 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=43 service=
+2026-09-18 16:13:20 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=44 service=email
+2026-09-18 16:13:20 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=44 service=email
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:13:20 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=44 service=email
+2026-09-18 16:13:35 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=44 service=email
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:13:35 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=43 service=
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=43 service=
+2026-09-18 16:13:50 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=44 service=email
+2026-09-18 16:13:50 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=44 service=email
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:13:50 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=42 service=
+2026-09-18 16:14:06 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=44 service=email
+2026-09-18 16:14:06 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=44 service=email
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:14:06 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:14:21 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=42 service=
+2026-09-18 16:14:21 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=43 service=email
+2026-09-18 16:14:21 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=43 service=email
+2026-09-18 16:14:21 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=42 service=
+2026-09-18 16:14:36 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=43 service=email
+2026-09-18 16:14:36 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=43 service=email
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:36 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=42 service=
+2026-09-18 16:14:51 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=43 service=email
+2026-09-18 16:14:51 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=43 service=email
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:14:51 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=43 service=email
+2026-09-18 16:15:06 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=43 service=email
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:15:06 [info     ] alert_seen                     active_at=2026-09-18T08:14:55.817543+00:00 alertname=OtelDemoHighLatencyP99 fingerprint=6db6d1e6 namespace=otel-demo service=flagd
+2026-09-18 16:15:06 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=41 service=
+2026-09-18 16:15:06 [info     ] memory_hit                     fault_type=high_latency n_records=1 service=flagd
+2026-09-18 16:15:06 [info     ] investigation_started          alertname=OtelDemoHighLatencyP99 fault_type_hint=high_latency incident_id=watchdog-OtelDemoHighLatencyP99-6db6d1e6 service=flagd window_end=2026-09-18T08:15:06.113369+00:00 window_start=2026-09-18T08:12:55.817543+00:00
+2026-09-18 16:15:10 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-18 16:15:10 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:15:10 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:15:10 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:15:10 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:15:15 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:15:15 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:15:15 [info     ] tool_call                      iteration=1 name=get_pod_events
+2026-09-18 16:15:15 [info     ] tool_call                      iteration=1 name=search_traces
+2026-09-18 16:15:28 [info     ] investigation_complete         cost_usd=0.003332 incident_id=watchdog-OtelDemoHighLatencyP99-6db6d1e6 latency_s=22.1528 report_path=artifacts/watchdog/20260918T081528Z_OtelDemoHighLatencyP99_flagd.json top_fault_type=high_latency top_service=recommendation wall_latency_s=22.2
+2026-09-18 16:15:28 [info     ] notification_sent              incident_id=watchdog-OtelDemoHighLatencyP99-6db6d1e6 webhook_host=qyapi.weixin.qq.com
+2026-09-18 16:15:28 [info     ] memory_written                 incident_id=watchdog-OtelDemoHighLatencyP99-6db6d1e6 path=memory/incidents/watchdog-OtelDemoHighLatencyP99-6db6d1e6.md
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=41 service=
+2026-09-18 16:15:43 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=42 service=email
+2026-09-18 16:15:43 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=42 service=email
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:43 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:15:58 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=40 service=
+2026-09-18 16:15:59 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=42 service=email
+2026-09-18 16:15:59 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=42 service=email
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:15:59 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=40 service=
+2026-09-18 16:16:14 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=42 service=email
+2026-09-18 16:16:14 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=42 service=email
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=KubeContainerWaiting namespace=otel-demo pod=email-7699887dd9-rnbxw reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:16:14 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=40 service=
+2026-09-18 16:16:29 [info     ] skipped_service_cooldown       alertname=KubePodCrashLooping first_alertname=KubePodNotReady remaining_min=41 service=email
+2026-09-18 16:16:29 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=41 service=email
+2026-09-18 16:16:29 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=41 service=email
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:29 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=40 service=
+2026-09-18 16:16:44 [info     ] skipped_service_cooldown       alertname=KubePodCrashLooping first_alertname=KubePodNotReady remaining_min=41 service=email
+2026-09-18 16:16:44 [info     ] skipped_cooldown               alertname=KubePodNotReady fingerprint=e170ff2c remaining_min=41 service=email
+2026-09-18 16:16:44 [info     ] skipped_service_cooldown       alertname=KubeDeploymentReplicasMismatch first_alertname=KubePodNotReady remaining_min=41 service=email
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:44 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=39 service=
+2026-09-18 16:16:59 [info     ] skipped_service_cooldown       alertname=KubePodCrashLooping first_alertname=KubePodNotReady remaining_min=41 service=email
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:16:59 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=39 service=
+2026-09-18 16:17:14 [info     ] skipped_service_cooldown       alertname=KubePodCrashLooping first_alertname=KubePodNotReady remaining_min=41 service=email
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:14 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_seen                     active_at=2026-09-18T08:17:25.817543+00:00 alertname=OtelDemoHighLatencyP99 fingerprint=5735b782 namespace=otel-demo service=ad
+2026-09-18 16:17:29 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=39 service=
+2026-09-18 16:17:29 [info     ] skipped_service_cooldown       alertname=KubePodCrashLooping first_alertname=KubePodNotReady remaining_min=40 service=email
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:17:29 [info     ] memory_miss                    fault_type=high_latency service=ad
+2026-09-18 16:17:29 [info     ] investigation_started          alertname=OtelDemoHighLatencyP99 fault_type_hint=high_latency incident_id=watchdog-OtelDemoHighLatencyP99-5735b782 service=ad window_end=2026-09-18T08:17:29.137447+00:00 window_start=2026-09-18T08:15:25.817543+00:00
+2026-09-18 16:17:31 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-18 16:17:31 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:17:31 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:17:31 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:17:31 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:17:36 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:17:36 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:17:36 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:17:36 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:17:36 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:17:36 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:17:36 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:17:36 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:17:42 [info     ] tool_call                      iteration=2 name=search_traces
+2026-09-18 16:17:42 [info     ] tool_call                      iteration=2 name=search_traces
+2026-09-18 16:17:42 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-18 16:17:42 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-18 16:17:42 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-18 16:17:42 [info     ] tool_call                      iteration=2 name=get_pod_events
+2026-09-18 16:17:44 [info     ] tool_call                      iteration=2 name=query_loki
+2026-09-18 16:17:44 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-18 16:17:44 [info     ] gateway_deny                   budget=20 reason=budget_exhausted tool=query_prometheus_range
+2026-09-18 16:19:44 [info     ] investigation_complete         cost_usd=0.0075417999999999995 incident_id=watchdog-OtelDemoHighLatencyP99-5735b782 latency_s=135.736533 report_path=artifacts/watchdog/20260918T081944Z_OtelDemoHighLatencyP99_ad.json top_fault_type=high_latency top_service=recommendation wall_latency_s=135.7
+2026-09-18 16:19:45 [info     ] notification_sent              incident_id=watchdog-OtelDemoHighLatencyP99-5735b782 webhook_host=qyapi.weixin.qq.com
+2026-09-18 16:19:45 [info     ] memory_written                 incident_id=watchdog-OtelDemoHighLatencyP99-5735b782 path=memory/incidents/watchdog-OtelDemoHighLatencyP99-5735b782.md
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=KubeControllerManagerInstanceUnreachable namespace=kube-system pod=kube-controller-manager-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=KubeProxyInstanceUnreachable namespace=kube-system pod=kube-proxy-sxzzt reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=KubeSchedulerInstanceUnreachable namespace=kube-system pod=kube-scheduler-otel-sre-copilot-control-plane reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=KubeAPIErrorBudgetBurn namespace= pod= reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] skipped_cooldown               alertname=OtelDemoHighErrorRate fingerprint=3a0d3ec3 remaining_min=36 service=
+2026-09-18 16:20:00 [info     ] alert_seen                     active_at=2026-09-18T08:19:25.817543+00:00 alertname=OtelDemoHighErrorRate fingerprint=549ee968 namespace=otel-demo service=frontend
+2026-09-18 16:20:00 [info     ] skipped_service_cooldown       alertname=KubePodCrashLooping first_alertname=KubePodNotReady remaining_min=38 service=email
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=TargetDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=Watchdog namespace= pod= reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=etcdMembersDown namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] alert_filtered                 alertname=etcdInsufficientMembers namespace=kube-system pod= reason=not_in_whitelist
+2026-09-18 16:20:00 [info     ] memory_hit                     fault_type=http_abort n_records=1 service=frontend
+2026-09-18 16:20:00 [info     ] investigation_started          alertname=OtelDemoHighErrorRate fault_type_hint=http_abort incident_id=watchdog-OtelDemoHighErrorRate-549ee968 service=frontend window_end=2026-09-18T08:20:00.276711+00:00 window_start=2026-09-18T08:17:25.817543+00:00
+2026-09-18 16:20:02 [info     ] tool_call                      iteration=0 name=get_service_topology
+2026-09-18 16:20:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:20:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:20:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:20:02 [info     ] tool_call                      iteration=0 name=query_prometheus_range
+2026-09-18 16:20:08 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:20:08 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:20:08 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:20:08 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:20:08 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:20:08 [info     ] tool_call                      iteration=1 name=query_prometheus_range
+2026-09-18 16:20:13 [info     ] tool_call                      iteration=2 name=search_traces
+2026-09-18 16:20:13 [info     ] tool_call                      iteration=2 name=query_loki
+2026-09-18 16:20:13 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-18 16:20:13 [info     ] tool_call                      iteration=2 name=query_prometheus_range
+2026-09-18 16:20:19 [info     ] tool_call                      iteration=3 name=get_trace
+2026-09-18 16:20:19 [warning  ] tool_error                     error="Client error '404 Not Found' for url 'http://localhost:3200/api/traces/3675baafa4ae4e4e'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404" tool=get_trace
+2026-09-18 16:20:19 [info     ] tool_call                      iteration=3 name=query_prometheus_range
+2026-09-18 16:20:19 [info     ] tool_call                      iteration=3 name=query_prometheus_range
+2026-09-18 16:20:19 [info     ] tool_call                      iteration=3 name=query_prometheus_range

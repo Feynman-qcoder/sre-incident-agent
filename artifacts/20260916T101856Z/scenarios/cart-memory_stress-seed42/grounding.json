@@ -1,0 +1,15 @@
+{
+  "grounding_score": 0.8889,
+  "verified": 8,
+  "total": 9,
+  "failed_items": [
+    {
+      "rank": "2",
+      "service": "cart",
+      "signal_type": "k8s_event",
+      "query_or_id": "Started: Container started (count=2)",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": false
+}

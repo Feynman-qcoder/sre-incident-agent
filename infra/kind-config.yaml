@@ -1,0 +1,43 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: sre-incident-agent
+# Single-node: sufficient for local dev on WSL2 (multi-node causes kubelet startup issues)
+
+# --- 镜像加速（2026-09-16 实测后落地，见决策文档 §13.12.4）---
+# ⚠️ 层级很容易写错（2026-09-16 踩过）：
+#   * containerdConfigPatches 是【集群级】字段 —— 写在 nodes: 之下会直接报
+#     "field containerdConfigPatches not found in type v1alpha4.Node"
+#   * extraMounts 是【节点级】字段 —— 必须写在某个 node 之下
+# kind v0.27.0+ 用 containerd 2.x -> 必须用 config_path 模式；
+# 旧的 [plugins."io.containerd.grpc.v1.cri".registry.mirrors.*] 写法不生效。
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.cri.v1.images".registry]
+      config_path = "/etc/containerd/certs.d"
+
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # Prometheus
+      - containerPort: 30090
+        hostPort: 9090
+        protocol: TCP
+      # Tempo
+      - containerPort: 30200
+        hostPort: 3200
+        protocol: TCP
+      # Loki
+      - containerPort: 30100
+        hostPort: 3100
+        protocol: TCP
+      # Astronomy Shop frontend
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
+
+    # 把仓库里的 infra/certs.d/{docker.io,ghcr.io}/hosts.toml 挂进节点
+    # （hostPath 相对路径 = 执行 kind create 时的当前目录，make up 在仓库根执行）
+    extraMounts:
+      - hostPath: ./infra/certs.d
+        containerPath: /etc/containerd/certs.d
+        readOnly: true

@@ -1,0 +1,1274 @@
+[
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "1.5"
+          ],
+          [
+            1705327170.0,
+            "1.5"
+          ],
+          [
+            1705327200.0,
+            "1.5"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "1.5"
+          ],
+          [
+            1705327170.0,
+            "1.5"
+          ],
+          [
+            1705327200.0,
+            "1.5"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "50.0"
+          ],
+          [
+            1705327170.0,
+            "50.0"
+          ],
+          [
+            1705327200.0,
+            "50.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "50.0"
+          ],
+          [
+            1705327170.0,
+            "50.0"
+          ],
+          [
+            1705327200.0,
+            "50.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.05"
+          ],
+          [
+            1705327170.0,
+            "0.05"
+          ],
+          [
+            1705327200.0,
+            "0.05"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.05"
+          ],
+          [
+            1705327170.0,
+            "0.05"
+          ],
+          [
+            1705327200.0,
+            "0.05"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"frontend-.*\"})",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "100000000.0"
+          ],
+          [
+            1705327170.0,
+            "100000000.0"
+          ],
+          [
+            1705327200.0,
+            "100000000.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"frontend-.*\"})",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "100000000.0"
+          ],
+          [
+            1705327170.0,
+            "100000000.0"
+          ],
+          [
+            1705327200.0,
+            "100000000.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.92"
+          ],
+          [
+            1705327170.0,
+            "0.92"
+          ],
+          [
+            1705327200.0,
+            "0.92"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.1"
+          ],
+          [
+            1705327170.0,
+            "0.1"
+          ],
+          [
+            1705327200.0,
+            "0.1"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "1.5"
+          ],
+          [
+            1705327170.0,
+            "1.5"
+          ],
+          [
+            1705327200.0,
+            "1.5"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "50.0"
+          ],
+          [
+            1705327170.0,
+            "50.0"
+          ],
+          [
+            1705327200.0,
+            "50.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "50.0"
+          ],
+          [
+            1705327170.0,
+            "50.0"
+          ],
+          [
+            1705327200.0,
+            "50.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.05"
+          ],
+          [
+            1705327170.0,
+            "0.05"
+          ],
+          [
+            1705327200.0,
+            "0.05"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.05"
+          ],
+          [
+            1705327170.0,
+            "0.05"
+          ],
+          [
+            1705327200.0,
+            "0.05"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "100000000.0"
+          ],
+          [
+            1705327170.0,
+            "100000000.0"
+          ],
+          [
+            1705327200.0,
+            "100000000.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "100000000.0"
+          ],
+          [
+            1705327170.0,
+            "100000000.0"
+          ],
+          [
+            1705327200.0,
+            "100000000.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "3.0"
+          ],
+          [
+            1705327170.0,
+            "3.0"
+          ],
+          [
+            1705327200.0,
+            "3.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "1.5"
+          ],
+          [
+            1705327170.0,
+            "1.5"
+          ],
+          [
+            1705327200.0,
+            "1.5"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "1.5"
+          ],
+          [
+            1705327170.0,
+            "1.5"
+          ],
+          [
+            1705327200.0,
+            "1.5"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "50.0"
+          ],
+          [
+            1705327170.0,
+            "50.0"
+          ],
+          [
+            1705327200.0,
+            "50.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "50.0"
+          ],
+          [
+            1705327170.0,
+            "50.0"
+          ],
+          [
+            1705327200.0,
+            "50.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[2m]))",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.05"
+          ],
+          [
+            1705327170.0,
+            "0.05"
+          ],
+          [
+            1705327200.0,
+            "0.05"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[2m]))",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.05"
+          ],
+          [
+            1705327170.0,
+            "0.05"
+          ],
+          [
+            1705327200.0,
+            "0.05"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "100000000.0"
+          ],
+          [
+            1705327170.0,
+            "100000000.0"
+          ],
+          [
+            1705327200.0,
+            "100000000.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "100000000.0"
+          ],
+          [
+            1705327170.0,
+            "100000000.0"
+          ],
+          [
+            1705327200.0,
+            "100000000.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "1.5"
+          ],
+          [
+            1705327170.0,
+            "1.5"
+          ],
+          [
+            1705327200.0,
+            "1.5"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "1.5"
+          ],
+          [
+            1705327170.0,
+            "1.5"
+          ],
+          [
+            1705327200.0,
+            "1.5"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "50.0"
+          ],
+          [
+            1705327170.0,
+            "50.0"
+          ],
+          [
+            1705327200.0,
+            "50.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "50.0"
+          ],
+          [
+            1705327170.0,
+            "50.0"
+          ],
+          [
+            1705327200.0,
+            "50.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.05"
+          ],
+          [
+            1705327170.0,
+            "0.05"
+          ],
+          [
+            1705327200.0,
+            "0.05"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.05"
+          ],
+          [
+            1705327170.0,
+            "0.05"
+          ],
+          [
+            1705327200.0,
+            "0.05"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"payment-.*\"})",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "100000000.0"
+          ],
+          [
+            1705327170.0,
+            "100000000.0"
+          ],
+          [
+            1705327200.0,
+            "100000000.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"payment-.*\"})",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "100000000.0"
+          ],
+          [
+            1705327170.0,
+            "100000000.0"
+          ],
+          [
+            1705327200.0,
+            "100000000.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+    "start": "2024-01-15T13:59:00+00:00",
+    "end": "2024-01-15T14:06:00+00:00",
+    "step": "30s",
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "type": "range",
+    "query": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+    "start": "2024-01-15T13:29:00+00:00",
+    "end": "2024-01-15T13:59:00+00:00",
+    "step": "30s",
+    "is_baseline": true,
+    "result": [
+      {
+        "metric": {},
+        "values": [
+          [
+            1705327140.0,
+            "0.0"
+          ],
+          [
+            1705327170.0,
+            "0.0"
+          ],
+          [
+            1705327200.0,
+            "0.0"
+          ]
+        ]
+      }
+    ]
+  }
+]

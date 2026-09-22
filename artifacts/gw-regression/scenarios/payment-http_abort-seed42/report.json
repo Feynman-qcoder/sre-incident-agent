@@ -1,0 +1,101 @@
+{
+  "incident_id": "payment-http_abort-seed42",
+  "investigation_start_ts": "2026-09-18T06:26:47.714813+00:00",
+  "investigation_end_ts": "2026-09-18T06:27:17.445669+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "http_abort",
+      "description": "An http_abort fault at the payment service HTTP boundary causes checkout's outbound calls to payment to never complete normally, so checkout blocks until its 10s deadline. Because the abort occurs at the HTTP boundary, payment emits no completed/errored server span, leaving its own server-side latency and error metrics normal.",
+      "confidence": 0.8,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99=10000.0ms, mean=9161.667ms (pegged at 10s deadline)",
+          "expected_baseline": "checkout p99 < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "payment p99=4.938ms, mean=3.928ms (normal - no server span recorded for aborted calls)",
+          "expected_baseline": "payment p99 < 100ms (normal)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "payment error_rate=0.000",
+          "expected_baseline": "error_rate < 0.01 - confirms abort, not an erroring server span"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "payment cpu=0.007 (flat, no resource pressure)",
+          "expected_baseline": "no cpu spike; rules out cpu_stress"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+          "observed_value": "payment restarts=0.000",
+          "expected_baseline": "0 restarts - rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout's server-side p99 latency is pinned at its 10s deadline while its downstream payment dependency reports normal latency, indicating checkout is blocked waiting on a non-responsive downstream HTTP dependency (payment).",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99=10000.0ms, max=10000.0ms",
+          "expected_baseline": "checkout p99 < 100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "checkout request_rate mean=0.010 (low but non-zero; requests still accepted, just stalling)",
+          "expected_baseline": "requests continue normally; consistent with blocking, not a request-rate collapse"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Symptom-level alternative: a latency plateau at checkout's 10s deadline could reflect an internal checkout slowdown rather than a downstream abort; however the absence of any checkout cpu/memory/error anomaly and the normal downstream metrics favor the dependency-abort explanation.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "checkout cpu=0.002-0.003 (flat)",
+          "expected_baseline": "no cpu spike; would need a resource anomaly to support internal high_latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable/roll back the http_abort fault injection on the payment service (the flagd flag controlling the payment HTTP abort) to restore normal responses.",
+    "Restart the payment deployment pods to clear any stuck/aborted connection state and confirm checkout p99 latency returns below 100ms.",
+    "Verify checkout p99 latency and payment server error/latency metrics recover to baseline after the fault is disabled."
+  ],
+  "fault_type_classification": "http_abort",
+  "grounding_score": 1.0,
+  "latency_s": 29.730856,
+  "cost_usd": 0.0037414999999999996,
+  "total_prompt_tokens": 6127,
+  "total_completion_tokens": 1521,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

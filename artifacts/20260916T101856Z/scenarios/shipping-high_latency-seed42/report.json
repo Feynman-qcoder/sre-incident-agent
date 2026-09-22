@@ -1,0 +1,97 @@
+{
+  "incident_id": "shipping-high_latency-seed42",
+  "investigation_start_ts": "2026-09-16T10:21:34.604837+00:00",
+  "investigation_end_ts": "2026-09-16T10:21:52.897164+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "The shipping service exhibits a severe server-side latency spike (p99 ~5.7s mean, peaking ~9.65s) during the incident window while error rate, CPU, memory, and restart counts remain normal. Its sole downstream dependency (quote) responds in ~2ms, indicating the delay originates within shipping itself.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency mean=5700.15ms, p50=4952.5ms, p95=9510ms, max=9650ms during window",
+          "expected_baseline": "p99 latency well under ~100ms for shipping server spans"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "quote p99=1.98ms (downstream healthy)",
+          "expected_baseline": "quote p99 < ~10ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.004, max=0.012",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0",
+          "expected_baseline": "0 restarts"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.002 (no spike)",
+          "expected_baseline": "container CPU usage without anomalous increase"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"shipping-.*\"})",
+          "observed_value": "memory ~12.5MB, stable (no spike)",
+          "expected_baseline": "stable working set, no memory growth"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout shows elevated p99 latency (~7.3s mean, up to ~9.95s), consistent with propagation from its slow downstream shipping dependency (checkout -> shipping) rather than an independent fault.",
+      "confidence": 0.35,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99 mean=7299.96ms, p50=9950ms, max=9950ms",
+          "expected_baseline": "checkout p99 well under ~100ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "quote",
+      "fault_type": "unknown",
+      "description": "Quote is the downstream dependency of shipping but remained healthy (p99 ~2ms); it is not the source of the latency and is listed only to rule out dependency_failure.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "quote p99=1.98ms",
+          "expected_baseline": "quote p99 < ~10ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect shipping service internals (GC pauses, blocking calls, thread/lock contention) since CPU/memory are normal and downstream quote is fast.",
+    "Compare shipping p99 latency before/after the window and correlate with any config or deploy changes for the seed42 experiment.",
+    "Add detailed span-level timing to isolate which shipping operation (e.g. quote request handling) is slow.",
+    "If a latency fault injection is active (high_latency seed42), disable or roll back the fault injection for the shipping service.",
+    "Verify upstream checkout and frontend latency returns to baseline once shipping is remediated."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 18.292327,
+  "cost_usd": 0.00342895,
+  "total_prompt_tokens": 4742,
+  "total_completion_tokens": 1685,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

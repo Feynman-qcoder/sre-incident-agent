@@ -1,0 +1,347 @@
+[
+  {
+    "traceID": "37a0c46c56a28e4f1e8953aca5c3dcb3",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717259761485607",
+    "durationMs": 15005
+  },
+  {
+    "traceID": "c3fb7c2d739c7fabb890084ea83b4bbb",
+    "rootServiceName": "<root span not yet received>",
+    "startTimeUnixNano": "1789717257379489228",
+    "durationMs": 15010
+  },
+  {
+    "traceID": "4ba64e3d735f207e2620f33bbdd0d179",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_get_recommendations",
+    "startTimeUnixNano": "1789717249982951309",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "20408f5e65d805168be7d39067ce0eb1",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_get_recommendations",
+    "startTimeUnixNano": "1789717246814713703",
+    "durationMs": 14999
+  },
+  {
+    "traceID": "5d44555ce9f643e51c38d02e27dae90a",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_get_recommendations",
+    "startTimeUnixNano": "1789717232669597262",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "8b87cea0ece36c3c1d19613d0e0ee0c4",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717228938500227",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "4ebcdf69ac1b21b8693c9944927f00c2",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717227401234466",
+    "durationMs": 15003
+  },
+  {
+    "traceID": "edebb5a9da09d580b3a6a19ba024a4ff",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_get_recommendations",
+    "startTimeUnixNano": "1789717221886093801",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "97ae4cc9a9506bfe8ef4a9a41db19994",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717216211769655",
+    "durationMs": 15005
+  },
+  {
+    "traceID": "8ef2adf64651c216682f0055c74b657a",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717208776523048",
+    "durationMs": 15005
+  },
+  {
+    "traceID": "11fbc09886164e7ecab2f97ff80bdbe7",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717208574982567",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "644335caaf77aae9a9d815211a6292cc",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717202117592257",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "8a22115769e7101fb84d885a1c58f02f",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717199857474701",
+    "durationMs": 15004
+  },
+  {
+    "traceID": "f7ca2fcd3955051305e7f42e271e8090",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717186670635032",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "43a487e550d9f4a2117f25c1fe8cfee3",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717176179833924",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "77d4fbb8b1c1e09f5cf703385e85b791",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_checkout_single",
+    "startTimeUnixNano": "1789717173387647956",
+    "durationMs": 30007
+  },
+  {
+    "traceID": "87cce2e1e51879d5a2bb9369fc6dca53",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717170487000000",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "d4b0758c7a900152a2caea0dc65f1cea",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_checkout_multi",
+    "startTimeUnixNano": "1789717165630936813",
+    "durationMs": 45013
+  },
+  {
+    "traceID": "f100260050e83979923d90b7341f9bba",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717163872000000",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "aab4e065e98605c9bbdccbe000501175",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717159275591447",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "779f7353733f8e15a36c3fd9573a5912",
+    "rootServiceName": "<root span not yet received>",
+    "startTimeUnixNano": "1789717042416000000",
+    "durationMs": 15005
+  },
+  {
+    "traceID": "95fdec3895391d36bb369cdb001b945a",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717032296108647",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "682ffc3b6410a8d19423d84228f60f18",
+    "rootServiceName": "<root span not yet received>",
+    "startTimeUnixNano": "1789717026023000000",
+    "durationMs": 30016
+  },
+  {
+    "traceID": "1c8f8551c8c85ab1d4de1da16ad4b3c4",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717024295390444",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "116514eec5f92b6d4fceac2bf265cc1f",
+    "rootServiceName": "fraud-detection",
+    "rootTraceName": "flagd.evaluation.v2.Service/EventStream",
+    "startTimeUnixNano": "1789716445151906466",
+    "durationMs": 600001
+  },
+  {
+    "traceID": "48f4e62d0a15de9b8c418e88f74a9d8f",
+    "rootServiceName": "<root span not yet received>",
+    "startTimeUnixNano": "1789716572471000000",
+    "durationMs": 599915
+  },
+  {
+    "traceID": "dcd90fb235a4902a944a873e42731a7f",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717116964000000",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "e6d7cec116ad8206149f272bc6d2a5ba",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717114147474088",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "97188f0d661911ef24abb7a378bd0513",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717109771721805",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "78c4fcbf3d6833a40a134f8206695193",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_checkout_single",
+    "startTimeUnixNano": "1789717107356190823",
+    "durationMs": 30006
+  },
+  {
+    "traceID": "a0f4464e8944d00d2c8b6fcfab648cc1",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717097783000000",
+    "durationMs": 15005
+  },
+  {
+    "traceID": "9177e066abf270b9454b6fdd70f8e0c2",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_get_recommendations",
+    "startTimeUnixNano": "1789717096822164628",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "55b2f0d7fbd9c4ba9eeeffc1ea04a47f",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717088948169490",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "fbdd83f036dbae80823140374a034f41",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717087560817780",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "812e20dd43d65ca5dbdce012df70713d",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717087439000000",
+    "durationMs": 15004
+  },
+  {
+    "traceID": "f7eb47897d6901364759072b7b05f304",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717078627871317",
+    "durationMs": 15002
+  },
+  {
+    "traceID": "a4a0538f5a756b5c44647945d48195f1",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717074843417230",
+    "durationMs": 15006
+  },
+  {
+    "traceID": "e4bbe730f7d1827f7b0b2d3f61946a2b",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717052515737183",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "abb014e4902b1b700cca9bc4f06347af",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_get_recommendations",
+    "startTimeUnixNano": "1789717048173508132",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "951901c313f8903c0d57696d64f1c2d3",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717044444537630",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "38791b7c3c872cb85a2b0b73309d121",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717361103397735",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "c1936144a53eda20c8d30d96c7f18cc2",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717352790761577",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "b70b25d85a777eea0aba23e2468f1b29",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717348393410406",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "96293ba241a05b0f420867fe42bd3046",
+    "rootServiceName": "<root span not yet received>",
+    "startTimeUnixNano": "1789717347717499479",
+    "durationMs": 15006
+  },
+  {
+    "traceID": "5254239b82e2e209e5ea0ce4c7089b34",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717335984324228",
+    "durationMs": 15009
+  },
+  {
+    "traceID": "86a2a77e3fff727917bf2e6118c95419",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_checkout_single",
+    "startTimeUnixNano": "1789717330786330987",
+    "durationMs": 30005
+  },
+  {
+    "traceID": "1a95ebc29cc0d8fdeb4324c9d20511e",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_get_recommendations",
+    "startTimeUnixNano": "1789717330003000000",
+    "durationMs": 15001
+  },
+  {
+    "traceID": "1065038c83e99f5eea336a1af17afe1",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_browse_product",
+    "startTimeUnixNano": "1789717326706790371",
+    "durationMs": 15000
+  },
+  {
+    "traceID": "404324ba97ee48cef26a7ed2a4c4258a",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_add_to_cart",
+    "startTimeUnixNano": "1789717323368821153",
+    "durationMs": 15006
+  },
+  {
+    "traceID": "c03212a920865075169e6a0c88c023af",
+    "rootServiceName": "load-generator",
+    "rootTraceName": "user_get_recommendations",
+    "startTimeUnixNano": "1789717314975658620",
+    "durationMs": 15001
+  }
+]

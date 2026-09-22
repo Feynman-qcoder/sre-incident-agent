@@ -1,0 +1,12 @@
+2026-09-17 18:39:26 [info     ] injecting_fault                dry_run=False fault_service=product-catalog fault_type=high_latency scenario_id=product-catalog-high_latency-seed42
+2026-09-17 18:39:26 [info     ] waiting_for_fault_duration     seconds=300
+2026-09-17 18:44:26 [info     ] snapshotting_telemetry         end=2026-09-17T10:45:26.564684+00:00 start=2026-09-17T10:38:26.337600+00:00
+2026-09-17 18:44:26 [info     ] snapshotting_metrics           services=15
+2026-09-17 18:44:27 [info     ] snapshotting_traces            services=15
+2026-09-17 18:44:27 [info     ] fetching_full_traces           count=5
+2026-09-17 18:44:27 [info     ] snapshotting_logs              services=15
+2026-09-17 18:44:28 [info     ] snapshotting_k8s_events        namespace=otel-demo
+2026-09-17 18:44:28 [info     ] snapshot_complete              output_dir=snapshots/product-catalog-high_latency-seed42
+2026-09-17 18:44:28 [info     ] snapshot_validation_pass       fault_over_baseline=837.37 fault_type=high_latency fault_value=8001.9 rank_by_ratio=2 service=product-catalog signal=p99_latency_ms
+2026-09-17 18:44:28 [info     ] ground_truth_written           path=snapshots/product-catalog-high_latency-seed42/ground_truth.json validation_passed=True
+2026-09-17 18:44:28 [info     ] injection_complete             output_dir=snapshots/product-catalog-high_latency-seed42 scenario_id=product-catalog-high_latency-seed42

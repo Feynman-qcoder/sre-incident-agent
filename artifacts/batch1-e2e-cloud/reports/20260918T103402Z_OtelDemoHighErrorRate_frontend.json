@@ -1,0 +1,91 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-549ee968",
+  "investigation_start_ts": "2026-09-18T10:33:37.335023+00:00",
+  "investigation_end_ts": "2026-09-18T10:34:02.991153+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend service is the only component in the namespace with a non-zero server error rate, and its p99 latency is pinned flat at the 10000ms timeout ceiling, indicating requests are stalling until they time out rather than failing fast. All downstream services reached by frontend (checkout, cart, payment, shipping, product-catalog, recommendation, ad, currency, email, fraud-detection, quote) measured zero server errors, localizing the symptom at the frontend edge.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.030, p95=0.076, max=0.076 (only non-zero error rate among all swept services)",
+          "expected_baseline": "error_rate ~0.000 (every other swept service measured 0.000)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=10000.000, p50=10000.000, max=10000.000 (flat timeout ceiling)",
+          "expected_baseline": "p99 latency well below the 10s timeout threshold"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.121, p95=0.128, max=0.128 (no CPU saturation)",
+          "expected_baseline": "no CPU spike, ruling out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "The distinct frontend server error rate (up to 0.076/s) could represent aborted/failed HTTP responses at the edge; however, because frontend p99 latency is pinned at 10s, these errors are more consistent with timeout-induced failures than immediate aborts, making this a secondary explanation.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.030, p95=0.076, max=0.076",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Frontend orchestrates checkout, cart, product-catalog, recommendation, shipping, currency and ad; a hidden dependency failure degrading the frontend cannot be excluded. However, checkout (a principal frontend dependency) reported zero server errors over the window, so this hypothesis is unconfirmed.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Capture frontend error traces (search_traces error_only=True for service_name='frontend') and frontend error logs to identify the exact downstream call or handler hitting the 10s timeout.",
+    "Measure p99 latency of frontend's downstream dependencies (checkout, cart, product-catalog, recommendation, shipping, currency, ad) over the same window to confirm whether the timeout originates downstream.",
+    "Review frontend HTTP client timeout/connection-pool configuration and check for thread/event-loop saturation or connection exhaustion on the frontend pods.",
+    "Check frontend pod restarts and k8s events (kube_pod_container_status_restarts_total, get_pod_events) to rule out restarts/OOM as a contributing factor.",
+    "Once the specific downstream source is identified, apply targeted remediation (scale out, circuit breaker, or timeout tuning) to bring frontend p99 back below the timeout threshold."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.55,
+  "latency_s": 25.65613,
+  "cost_usd": 0.00437535,
+  "total_prompt_tokens": 7641,
+  "total_completion_tokens": 1620,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

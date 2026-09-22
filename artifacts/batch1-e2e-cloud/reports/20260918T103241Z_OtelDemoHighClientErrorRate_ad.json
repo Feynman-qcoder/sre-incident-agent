@@ -1,0 +1,103 @@
+{
+  "incident_id": "watchdog-OtelDemoHighClientErrorRate-11ae2a2b",
+  "investigation_start_ts": "2026-09-18T10:32:07.301112+00:00",
+  "investigation_end_ts": "2026-09-18T10:32:41.973399+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend exhibits a severe latency regression: its user-facing server spans are pinned at 15-30s (p95_duration=30753ms) with zero errors, indicating requests are held open by a slow dependency rather than failing fast. CPU (0.118 cores), memory (~613MB) and restart count (0) are all nominal, ruling out resource or pod-fault causes.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "47f64c4e715ec886",
+          "observed_value": "user_add_to_cart=30000ms; search_traces(frontend, error_only=True) returned 20 traces, 0 errors, p95_duration=30753ms",
+          "expected_baseline": "user-facing span p95 < 1000ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "152a1e56af4acd8d",
+          "observed_value": "user_get_recommendations=15000ms (ok); 51f3db064c6be894 user_browse_product=15001ms",
+          "expected_baseline": "user_get_recommendations p95 < 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000 across the window",
+          "expected_baseline": "error_rate < 0.01; confirms latency (not error) fault mode"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu mean=0.118, p99=0.130 cores (no spike)",
+          "expected_baseline": "rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0",
+          "expected_baseline": "rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "Frontend browse and recommendation paths are both pinned near exactly 15000ms. Both frontend->product-catalog and recommendation->product-catalog share product-catalog as a common downstream dependency, so a slow product-catalog would explain simultaneous 15s stalls on both user_browse_product and user_get_recommendations. Not independently confirmed by a direct span fetch (tool budget exhausted).",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "152a1e56af4acd8d",
+          "observed_value": "user_get_recommendations=15000ms and 51f3db064c6be894 user_browse_product=15001ms — both pinned at ~15s on the common product-catalog dependency",
+          "expected_baseline": "product-catalog-backed paths p95 < 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000",
+          "expected_baseline": "error_rate < 0.01 (slow-but-up dependency, no errors)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "recommendation sits on the frontend browse path (frontend->recommendation->product-catalog) and its user-facing span (user_get_recommendations) is pinned at 15000ms. A latency fault injected at recommendation would propagate directly to the frontend. Not independently confirmed by a direct span fetch (tool budget exhausted).",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "152a1e56af4acd8d",
+          "observed_value": "user_get_recommendations=15000ms (recommendation fan-out path stalled)",
+          "expected_baseline": "recommendation p95 < 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000 (slow but not erroring)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Fetch the full span tree for trace 47f64c4e715ec886 (user_add_to_cart, 30000ms) and 152a1e56af4acd8d (user_get_recommendations, 15000ms) to identify the exact child span contributing the 15000ms stall and its owning service.",
+    "Compare per-service p99 server latency for frontend's downstreams (recommendation, product-catalog, cart, shipping, currency, payment, ad) to isolate the single slow dependency.",
+    "Review and tighten frontend request/upstream timeouts so a slow downstream cannot pin user requests at 15-30s; add circuit-breaking/deadline propagation.",
+    "Check frontend and candidate downstream pods for CPU throttling/resource limits and inter-node network latency.",
+    "Investigate k8s events on the quote/shipping path ('Killing: Container quote definition changed, will be restarted' and pause-image ImagePullBackOff) to confirm whether they impact checkout latency."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.6,
+  "latency_s": 34.672287,
+  "cost_usd": 0.00465815,
+  "total_prompt_tokens": 7723,
+  "total_completion_tokens": 1862,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

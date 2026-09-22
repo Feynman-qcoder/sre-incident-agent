@@ -1,0 +1,97 @@
+{
+  "incident_id": "recommendation-cpu_stress-seed42",
+  "investigation_start_ts": "2026-09-17T15:29:32.435928+00:00",
+  "investigation_end_ts": "2026-09-17T15:29:51.625237+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "cpu_stress",
+      "description": "The recommendation service is burning ~2.3-3.6 CPU cores during the incident window, roughly 30-100x higher than every peer service in the namespace (<0.1 cores), while error rate, latency, memory and restarts all remain normal. This isolated compute saturation is the injected fault and matches the incident id recommendation-cpu_stress-seed42.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "mean=2.343 cores, p95=3.604, max=3.608 during window",
+          "expected_baseline": "peer services <0.1 cores (checkout 0.003, frontend 0.070, product-catalog 0.025, cart 0.007, payment 0.008)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "mean=0.003 cores, max=0.005",
+          "expected_baseline": "healthy checkout CPU baseline ~0.003 cores"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[2m]))",
+          "observed_value": "mean=0.007 cores, max=0.009",
+          "expected_baseline": "healthy cart CPU baseline ~0.007 cores"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "error_rate < 0.01 — confirms no request failures, isolating fault to CPU compute"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000",
+          "expected_baseline": "0 restarts — rules out pod_crash"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "mean=105.9MB, max=108.9MB (stable)",
+          "expected_baseline": "flat memory — rules out memory_stress/leak"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "Secondary consideration: if the CPU contention caused throttling, recommendation p99 latency could be degraded. However, measured p99 (~19-24 ms) shows no convincing anomaly versus baseline, so this is a weak alternative rather than the primary root cause.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=19.123 ms, p95=23.86, p99=23.97, max=24.0",
+          "expected_baseline": "p99 ~24 ms; no significant latency spike observed"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "recommendation",
+      "fault_type": "memory_stress",
+      "description": "Tertiary consideration: recommendation memory working set is stable at ~106 MB with no growth, so memory stress is effectively ruled out; retained only as a low-confidence alternate.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "mean=105861666 bytes (~106 MB), max=108965888 bytes, stable",
+          "expected_baseline": "flat memory, no leak signature"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm CPU saturation on recommendation pods by inspecting per-pod CPU usage and throttling metrics.",
+    "Identify and remove the CPU-stress workload/hog injected into the recommendation service (e.g. stress-ng sidecar or runaway compute loop).",
+    "Apply/raise CPU limits and requests for the recommendation deployment and enable CPU-throttling alerts.",
+    "Horizontally scale the recommendation deployment if the load is legitimate, then verify CPU returns to ~0.02-0.1 cores baseline.",
+    "Verify frontend→recommendation call latency/throughput recovers after CPU normalizes."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 1.0,
+  "latency_s": 19.189309,
+  "cost_usd": 0.0034611499999999996,
+  "total_prompt_tokens": 4999,
+  "total_completion_tokens": 1630,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

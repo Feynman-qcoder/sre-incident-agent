@@ -1,0 +1,72 @@
+# kube-prometheus-stack values —— 单节点 kind 精简版
+# =============================================================================
+# ⚠️ 2026-09-16 修正：本文件原先按 standalone `prometheus` chart 的 schema 写
+#    （顶层 `server:` / `extraScrapeConfigs:`），但 Makefile 装的是
+#    **kube-prometheus-stack** —— 这些键会被 Helm **静默忽略**（不报错），后果：
+#      · `server.service.type/nodePort` 失效 → Prometheus Service 仍是 ClusterIP
+#        → 宿主 localhost:9090 不通 → `make health-check` FAIL
+#      · `server.extraFlags` 失效 → `--web.enable-remote-write-receiver` 没开
+#        → OTel Collector 的 remote_write 被 Prometheus 拒绝 → 指标进不来
+#      · `extraScrapeConfigs` 失效 → 自定义抓取任务不生效
+#      · `nodeExporter.enabled` 是**无效键名**（kps 里是 `prometheus-node-exporter`）
+#    下列键名已逐一对照 kube-prometheus-stack **91.4.1** 的 values.yaml 与
+#    templates/prometheus/service.yaml 核实（模板第 45–46/88 行确实渲染 type/nodePort）。
+# =============================================================================
+
+prometheus:
+  enabled: true
+
+  # 对外暴露：kind 把宿主 9090 映射到节点的 30090（见 infra/kind-config.yaml）
+  service:
+    type: NodePort
+    nodePort: 30090
+
+  prometheusSpec:
+    # 等价于启动参数 --web.enable-remote-write-receiver
+    # OTel Collector 通过 remote_write 把指标推进来（见 infra/collector/otelcol-config.yaml）
+    enableRemoteWriteReceiver: true
+    retention: 7d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# --- 不需要的组件全部关掉：省内存、少拉镜像 ---
+# Alertmanager：add-oncall-loop 启用（告警治理 → 企微群）。
+# NodePort 30903：kps 91.4.1 渲染实测支持 values 固定 nodePort（helm template
+# 验证过 nodePort: 30903 出现在 service）——无需 Tempo/Loki 式 patch。
+# UI 访问：宿主机直连 kind 节点 IP:30903（集群已建，kind-config 不追加映射）。
+# 路由/接收器/抑制规则见 infra/alertmanager/otel-demo-oncall.yaml（AlertmanagerConfig CR）。
+alertmanager:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30903
+  alertmanagerSpec:
+    retention: 72h          # 省盘（spec Requirement 1）
+    # 拉取 otel-demo namespace 的 AlertmanagerConfig（路由 → 中转 → 企微）
+    alertmanagerConfigSelector: {}
+    alertmanagerConfigNamespaceSelector: {}
+
+prometheus-pushgateway:
+  enabled: false
+
+# 单节点 kind 不需要 node-exporter DaemonSet
+# ⚠️ 键名核实（kube-prometheus-stack 91.4.1 的 Chart.yaml）：
+#     dependencies: name=prometheus-node-exporter  condition=**nodeExporter.enabled**
+#   所以是 `nodeExporter.enabled`，**不是** `prometheus-node-exporter.enabled`
+#   （后者是我一度写错的版本，无任何效果）。
+nodeExporter:
+  enabled: false
+
+# kube-state-metrics 的开关同样是「驼峰」键名，condition=kubeStateMetrics.enabled
+kubeStateMetrics:
+  enabled: true
+
+# 评测只用到 Prometheus/Tempo/Loki 的 HTTP API，不装 Grafana
+# （这条键名与 condition 一致：grafana.enabled）
+grafana:
+  enabled: false

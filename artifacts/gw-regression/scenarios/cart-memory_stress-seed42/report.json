@@ -1,0 +1,89 @@
+{
+  "incident_id": "cart-memory_stress-seed42",
+  "investigation_start_ts": "2026-09-18T06:27:36.067760+00:00",
+  "investigation_end_ts": "2026-09-18T06:27:53.493709+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "The cart service is the dominant anomaly: its container working set averages ~93MB (peaking ~108MB), roughly 4x peer services (~24MB for product-catalog and checkout), while CPU and error rate remain low. The memory pressure coincides with a p99 latency spike and container recreation/restarts, matching a memory_stress fault.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "mean=93337463 bytes (~93MB), p99=108279562 (~108MB), max=108339200",
+          "expected_baseline": "peer services ~24MB (product-catalog mean=24191249, checkout mean=24669661)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency spike max=78.573 ms, anomaly window [1789545942.954→1789545972.954]",
+          "expected_baseline": "p50 latency ~4.262 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "increase ~1.031 restarts in 5m window (mean=0.619, max=1.031)",
+          "expected_baseline": "0 restarts for healthy steady-state pods"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Started: Container started (count=2)",
+          "observed_value": "cart container recreated/started twice during window (Created count=2, Started count=2)",
+          "expected_baseline": "no container recreation during steady state"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "cart",
+      "fault_type": "high_latency",
+      "description": "Secondary hypothesis: cart's p99 server latency spiked within the incident window, plausibly a downstream symptom of memory pressure/GC rather than an independent fault. Error rate stayed at zero, so this is a latency-dominated signal.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 max=78.573 ms, anomaly detected in early window",
+          "expected_baseline": "p50=4.262 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "cart",
+      "fault_type": "unknown",
+      "description": "Weakest hypothesis: whether the container recreation was accompanied by an OOMKill was not directly observed (no OOMKilled event returned, error rate and error logs were empty), so a pure pod_crash classification is not supported.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 across window",
+          "expected_baseline": "no errors expected"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"cart\"} |= \"error\"",
+          "observed_value": "[no logs found]",
+          "expected_baseline": "no error logs in healthy operation"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Disable the cart memory_stress fault via the fault-injection control plane (flagd) for the seed42 scenario.",
+    "Inspect and raise the cart pod memory limits/requests, and investigate a possible memory leak — the cart working set (~93-108MB) ran ~4x its peer services.",
+    "Monitor cart p99 latency and restart counts after the fault is disabled to confirm recovery."
+  ],
+  "fault_type_classification": "memory_stress",
+  "grounding_score": 0.8571,
+  "latency_s": 17.425949,
+  "cost_usd": 0.0032703999999999997,
+  "total_prompt_tokens": 5123,
+  "total_completion_tokens": 1407,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

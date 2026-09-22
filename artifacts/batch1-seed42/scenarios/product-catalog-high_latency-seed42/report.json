@@ -1,0 +1,89 @@
+{
+  "incident_id": "product-catalog-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T09:16:33.936325+00:00",
+  "investigation_end_ts": "2026-09-18T09:16:51.918743+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog serves requests with server-side p99 latency pinned at the ~10000ms ceiling throughout the incident window, while its error rate, CPU usage, memory usage and pod restart count all remain at normal baselines. As a leaf dependency of frontend, checkout and recommendation, this latency propagates up the call graph, driving all callers to ~10s p99.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms, p50=10000.000, mean=7716.873 across window",
+          "expected_baseline": "p99 < 100 ms (normal product-catalog server latency)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (all samples 0)",
+          "expected_baseline": "error_rate < 0.01; no HTTP abort present, ruling out http_abort"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.027 cores, max=0.040 cores",
+          "expected_baseline": "< 0.1 cores; confirms no CPU saturation, ruling out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "memory ~24.4 MB (mean 24,446,293 bytes, max 24,985,600)",
+          "expected_baseline": "~24 MB steady; no memory pressure, ruling out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0",
+          "expected_baseline": "0 restarts; ruling out pod_crash"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "frontend p99=10000.000 ms (mean=7594.447)",
+          "expected_baseline": "frontend p99 < few hundred ms; inflated by product-catalog dependency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "recommendation p99=10000.000 ms (mean=8001.712)",
+          "expected_baseline": "recommendation p99 < few hundred ms; inflated by product-catalog dependency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99=10000.000 ms (mean=7339.960)",
+          "expected_baseline": "checkout p99 < few hundred ms; inflated by product-catalog dependency"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"product-catalog\"} |= \"error\"",
+          "observed_value": "no logs found (no error-level output)",
+          "expected_baseline": "no errors; consistent with latency injection rather than failing calls"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Successfully update ObservedGeneration and FailedMessage of resource (count=1)",
+          "observed_value": "only benign controller update events for product-catalog pods; no OOMKilled/BackOff/FailedMount",
+          "expected_baseline": "no crash/restart events; rules out pod_crash"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm and disable the injected latency fault on product-catalog (flagd fault-injection flag or tc netem / latency sidecar for the seed42 scenario) and roll it back.",
+    "Inspect product-catalog request handling for artificial sleeps or downstream I/O stalls to verify the ~10s delay is injected rather than a genuine backend slowdown.",
+    "Restart/roll the product-catalog deployment to clear any stuck latency condition, then confirm product-catalog p99 returns below ~100ms and that frontend, checkout and recommendation p99 recover."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 17.982418,
+  "cost_usd": 0.00176535,
+  "total_prompt_tokens": 6025,
+  "total_completion_tokens": 1436,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

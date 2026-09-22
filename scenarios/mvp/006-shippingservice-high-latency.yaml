@@ -1,0 +1,34 @@
+metadata:
+  scenario_id: shipping-high_latency-seed42
+  fault_service: shipping
+  fault_type: high_latency
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Network latency on shipping (1500ms ± 300ms). The delay must clearly exceed this
+    cluster's noisy multi-second baseline p99 to be a discriminative outlier.
+    Tests agent's ability to distinguish direct vs cascading latency.
+    shipping → quoteservice (leaf), so latency is not a dependency failure.
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: NetworkChaos
+  metadata:
+    name: shipping-latency-seed42
+    namespace: chaos-mesh
+  spec:
+    action: delay
+    mode: all
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: shipping
+    delay:
+      latency: "1500ms"
+      jitter: "300ms"
+      correlation: "25"
+    duration: "300s"
+    direction: to

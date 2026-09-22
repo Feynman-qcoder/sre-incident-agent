@@ -1,0 +1,101 @@
+[
+  {
+    "type": "Normal",
+    "reason": "Pulled",
+    "message": "Container image \"ghcr.io/open-telemetry/demo:3.0.0-checkout\" already present on machine and can be accessed by the pod",
+    "count": 2,
+    "first_time": "2026-09-16 07:00:01+00:00",
+    "last_time": "2026-09-16 07:40:42+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Normal",
+    "reason": "Created",
+    "message": "Container created",
+    "count": 2,
+    "first_time": "2026-09-16 07:00:01+00:00",
+    "last_time": "2026-09-16 07:40:42+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Normal",
+    "reason": "Started",
+    "message": "Container started",
+    "count": 2,
+    "first_time": "2026-09-16 07:00:01+00:00",
+    "last_time": "2026-09-16 07:40:42+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Normal",
+    "reason": "Killing",
+    "message": "Container checkout definition changed, will be restarted",
+    "count": 1,
+    "first_time": "2026-09-16 07:35:42+00:00",
+    "last_time": "2026-09-16 07:35:42+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Normal",
+    "reason": "Pulling",
+    "message": "Pulling image \"gcr.io/google-containers/pause:latest\"",
+    "count": 3,
+    "first_time": "2026-09-16 07:35:42+00:00",
+    "last_time": "2026-09-16 07:37:25+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Warning",
+    "reason": "Failed",
+    "message": "Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull and unpack image \"gcr.io/google-containers/pause:latest\": failed to resolve reference \"gcr.io/google-containers/pause:latest\": failed to do request: Head \"https://gcr.io/v2/google-containers/pause/manifests/latest\": dial tcp 142.250.99.82:443: i/o timeout",
+    "count": 2,
+    "first_time": "2026-09-16 07:36:12+00:00",
+    "last_time": "2026-09-16 07:36:57+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Warning",
+    "reason": "Failed",
+    "message": "Error: ErrImagePull",
+    "count": 3,
+    "first_time": "2026-09-16 07:36:12+00:00",
+    "last_time": "2026-09-16 07:38:25+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Normal",
+    "reason": "BackOff",
+    "message": "Back-off pulling image \"gcr.io/google-containers/pause:latest\"",
+    "count": 4,
+    "first_time": "2026-09-16 07:36:12+00:00",
+    "last_time": "2026-09-16 07:38:47+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Warning",
+    "reason": "Failed",
+    "message": "Error: ImagePullBackOff",
+    "count": 4,
+    "first_time": "2026-09-16 07:36:12+00:00",
+    "last_time": "2026-09-16 07:38:47+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Warning",
+    "reason": "Failed",
+    "message": "Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull and unpack image \"gcr.io/google-containers/pause:latest\": failed to resolve reference \"gcr.io/google-containers/pause:latest\": failed to do request: Head \"https://gcr.io/v2/google-containers/pause/manifests/latest\": dial tcp 173.194.203.82:443: i/o timeout",
+    "count": 1,
+    "first_time": "2026-09-16 07:38:25+00:00",
+    "last_time": "2026-09-16 07:38:25+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  },
+  {
+    "type": "Warning",
+    "reason": "BackOff",
+    "message": "Back-off restarting failed container checkout in pod checkout-5df89485f4-572wp_otel-demo(2c8f548a-51d6-4da2-b577-0ebef3834846)",
+    "count": 2,
+    "first_time": "2026-09-16 07:39:01+00:00",
+    "last_time": "2026-09-16 07:40:06+00:00",
+    "involved_object_name": "checkout-5df89485f4-572wp"
+  }
+]

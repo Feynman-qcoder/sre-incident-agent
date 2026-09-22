@@ -1,0 +1,17 @@
+# containerd registry hosts config for quay.io
+# Used by kind node containerd (containerd 2.x, config_path mode).
+#
+# 为什么需要：kube-prometheus-stack 的镜像里很大一部分来自 quay.io
+#   （prometheus / alertmanager / thanos / prometheus-operator / node-exporter /
+#     kiwigrid-k8s-sidecar ...），而 `registry-mirrors` 只管 docker.io。
+#
+# 注意：该目录（certs.d）的更新**不需要重启 containerd、也不需要重建集群**，
+#       新增仓库的子目录在挂载点里即时可见。
+
+server = "https://quay.io"
+
+[host."https://quay.m.daocloud.io"]
+  capabilities = ["pull", "resolve"]
+
+[host."https://quay.nju.edu.cn"]
+  capabilities = ["pull", "resolve"]

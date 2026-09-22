@@ -1,0 +1,95 @@
+{
+  "incident_id": "product-catalog-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T11:56:39.791284+00:00",
+  "investigation_end_ts": "2026-09-18T11:56:55.523699+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog server-side p99 latency is pinned at the ~10000ms ceiling throughout the incident window while its error rate, CPU usage, memory usage and pod restarts all remain at normal baselines — a pure injected latency fault. As a shared leaf dependency of frontend, checkout and recommendation, the ~10s stall propagates up the call graph, driving frontend p99 to the same ceiling.",
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=p95=p99=max=10000.000 ms, mean=7716.873 ms",
+          "expected_baseline": "p99 < 100 ms under normal operation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p50=p95=p99=max=10000.000 ms, mean=7594.447 ms (propagated upstream)",
+          "expected_baseline": "frontend p99 < 100 ms under normal operation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.027 cores (max=0.040)",
+          "expected_baseline": "<=0.05 cores; not saturated, ruling out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=24446293 bytes (~24.4 MB, max 24985600)",
+          "expected_baseline": "~25 MB steady; no memory pressure"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 errors/s throughout window",
+          "expected_baseline": "error_rate < 0.01; latency fault, not error fault"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "0 restarts",
+          "expected_baseline": "0 restarts; rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "cpu_stress",
+      "description": "Alternative hypothesis: product-catalog CPU saturation inflating response times toward the 10s timeout. Rejected because observed CPU usage is only ~0.027 cores (max 0.040), far below saturation.",
+      "confidence": 0.08,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.027 cores (max=0.040)",
+          "expected_baseline": "cpu_stress would show ~2.0 cores saturation"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "frontend p99 is also pinned at 10000ms, but this is downstream-propagation of product-catalog's stall (frontend -> product-catalog edge) rather than an independent fault, since frontend's own error rate is zero and the ceiling is identical.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=max=10000.000 ms",
+          "expected_baseline": "frontend p99 < 100 ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm and disable the injected latency fault on product-catalog (flagd fault-injection flag or tc netem / latency sidecar for the seed42 scenario), then roll it back.",
+    "Inspect product-catalog request handling for artificial sleeps or downstream I/O stalls to verify the ~10s delay is injected rather than a genuine backend slowdown.",
+    "Verify that frontend, checkout and recommendation p99 latency returns below 100ms after the fault is removed, since they are all downstream consumers of product-catalog."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 15.732415,
+  "cost_usd": 0.00175035,
+  "total_prompt_tokens": 5861,
+  "total_completion_tokens": 1452,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

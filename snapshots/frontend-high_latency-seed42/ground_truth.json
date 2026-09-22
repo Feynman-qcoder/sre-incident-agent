@@ -1,0 +1,13 @@
+{
+  "scenario_id": "frontend-high_latency-seed42",
+  "fault_service": "frontend",
+  "fault_type": "high_latency",
+  "chaos_kind": "NetworkChaos",
+  "injection_ts": "2026-09-18T07:05:53.943661+00:00",
+  "recovery_ts": "2026-09-18T07:10:56.157277+00:00",
+  "seed": 42,
+  "chaos_manifest_hash": "fe62d6a614896431",
+  "window_start": "2026-09-18T07:04:53.943661+00:00",
+  "window_end": "2026-09-18T07:11:56.157277+00:00",
+  "validation_passed": false
+}

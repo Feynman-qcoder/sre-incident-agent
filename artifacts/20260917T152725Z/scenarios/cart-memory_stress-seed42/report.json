@@ -1,0 +1,95 @@
+{
+  "incident_id": "cart-memory_stress-seed42",
+  "investigation_start_ts": "2026-09-17T15:29:51.724046+00:00",
+  "investigation_end_ts": "2026-09-17T15:30:14.166568+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "The cart service shows an abnormally large container memory working set (mean ~93 MB, peaking ~108 MB) versus ~24 MB for peer leaf services (checkout, product-catalog), together with container restart activity, consistent with a memory-stress fault injected into cart.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "mean=93337463.467 B, p50=90976256 B, p95=108041011.2 B, max=108339200 B",
+          "expected_baseline": "~24-25 MB working set (checkout=24669661.867 B, product-catalog=24191249.067 B)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "mean=0.619, max=1.031 restarts over 5m",
+          "expected_baseline": "0 restarts in steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Created: Container created (count=2)",
+          "observed_value": "cart pod container Created/Started events with count=2",
+          "expected_baseline": "no container recreate events during normal operation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[2m]))",
+          "observed_value": "mean=0.035 cores, max=0.102 cores",
+          "expected_baseline": "checkout cpu usage mean=0.004 cores (stable)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "cart",
+      "fault_type": "high_latency",
+      "description": "Cart server-side p99 latency spikes to ~78 ms (median ~4 ms) during the incident window, a secondary effect of memory pressure/GC on the cart container.",
+      "confidence": 0.45,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=12.136 ms, p50=4.262 ms, p95=53.276 ms, max=78.573 ms (anomaly 1789545942.954→1789545972.954)",
+          "expected_baseline": "p99 ~4-5 ms (steady-state p50)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "cart",
+      "fault_type": "dependency_failure",
+      "description": "Frontend and checkout depend on cart (frontend → cart, checkout → cart); memory pressure in cart could degrade these upstream callers, but no cart server errors were observed, making this the least supported explanation.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 at all sampled points",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=cart error_only=True",
+          "observed_value": "[no traces found]",
+          "expected_baseline": "no error traces expected for healthy cart"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"cart\"} |= \"error\"",
+          "observed_value": "[no logs found]",
+          "expected_baseline": "no cart error logs"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Increase the cart container memory limit/request and verify OOM/GC behavior for the cart deployment in namespace otel-demo.",
+    "Rolling-restart the cart pods to clear pressured memory and confirm the working set returns to the ~24 MB peer baseline.",
+    "Add a memory-usage alert on container_memory_working_set_bytes for cart and monitor p99 latency of upstream callers (frontend, checkout) for recurrence."
+  ],
+  "fault_type_classification": "memory_stress",
+  "grounding_score": 1.0,
+  "latency_s": 22.442522,
+  "cost_usd": 0.00344295,
+  "total_prompt_tokens": 4989,
+  "total_completion_tokens": 1616,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

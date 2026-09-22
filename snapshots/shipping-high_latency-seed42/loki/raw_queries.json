@@ -1,0 +1,250 @@
+[
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?frontend\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?frontend\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?cart\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?cart\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?checkout\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?checkout\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?currency\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?currency\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?email\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?email\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?payment\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?payment\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?product-catalog\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?product-catalog\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?recommendation\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?recommendation\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?shipping\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": [
+      {
+        "stream": {
+          "detected_level": "WARN",
+          "job": "opentelemetry-demo/shipping",
+          "level": "WARN",
+          "service_name": "opentelemetry-demo/shipping"
+        },
+        "values": [
+          [
+            "1789546510198587197",
+            "{\"traceid\":\"4f436fc7833cb00dadcfd2e0a912755d\",\"spanid\":\"5c0cb7ad277e7fbf\",\"severity\":\"WARN\",\"flags\":1,\"attributes\":{\"error\":\"EvaluationError { code: General(\\\"request timeout or cancelled\\\"), message: Some(\\\"Timeout expired\\\") }\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"shipping::shipping_service\"}}"
+          ],
+          [
+            "1789546460445003062",
+            "{\"traceid\":\"25d29531f0b56bff1e5484f7b916bca2\",\"spanid\":\"e993a03b64ecc405\",\"severity\":\"WARN\",\"flags\":1,\"attributes\":{\"error\":\"EvaluationError { code: General(\\\"request timeout or cancelled\\\"), message: Some(\\\"Timeout expired\\\") }\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"shipping::shipping_service\"}}"
+          ],
+          [
+            "1789546400725728027",
+            "{\"traceid\":\"09397371ac1f940a4a5ed5b3fb5fe47f\",\"spanid\":\"7926bb4617e9f97f\",\"severity\":\"WARN\",\"flags\":1,\"attributes\":{\"error\":\"EvaluationError { code: General(\\\"request timeout or cancelled\\\"), message: Some(\\\"Timeout expired\\\") }\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"shipping::shipping_service\"}}"
+          ]
+        ]
+      },
+      {
+        "stream": {
+          "detected_level": "ERROR",
+          "job": "opentelemetry-demo/shipping",
+          "level": "ERROR",
+          "service_name": "opentelemetry-demo/shipping"
+        },
+        "values": [
+          [
+            "1789546510198542383",
+            "{\"body\":\"failed to resolve integer flag\",\"traceid\":\"4f436fc7833cb00dadcfd2e0a912755d\",\"spanid\":\"5c0cb7ad277e7fbf\",\"severity\":\"ERROR\",\"flags\":1,\"attributes\":{\"error\":\"code: 'The operation was cancelled', message: \\\"Timeout expired\\\", source: tonic::transport::Error(Transport, TimeoutExpired(()))\",\"flag_key\":\"intlShippingSlowdown\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"open_feature_flagd::resolver::rpc\"}}"
+          ],
+          [
+            "1789546460444958548",
+            "{\"body\":\"failed to resolve integer flag\",\"traceid\":\"25d29531f0b56bff1e5484f7b916bca2\",\"spanid\":\"e993a03b64ecc405\",\"severity\":\"ERROR\",\"flags\":1,\"attributes\":{\"error\":\"code: 'The operation was cancelled', message: \\\"Timeout expired\\\", source: tonic::transport::Error(Transport, TimeoutExpired(()))\",\"flag_key\":\"intlShippingSlowdown\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"open_feature_flagd::resolver::rpc\"}}"
+          ],
+          [
+            "1789546400725678393",
+            "{\"body\":\"failed to resolve integer flag\",\"traceid\":\"09397371ac1f940a4a5ed5b3fb5fe47f\",\"spanid\":\"7926bb4617e9f97f\",\"severity\":\"ERROR\",\"flags\":1,\"attributes\":{\"error\":\"code: 'The operation was cancelled', message: \\\"Timeout expired\\\", source: tonic::transport::Error(Transport, TimeoutExpired(()))\",\"flag_key\":\"intlShippingSlowdown\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"open_feature_flagd::resolver::rpc\"}}"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?shipping\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": [
+      {
+        "stream": {
+          "detected_level": "WARN",
+          "job": "opentelemetry-demo/shipping",
+          "level": "WARN",
+          "service_name": "opentelemetry-demo/shipping"
+        },
+        "values": [
+          [
+            "1789546510198587197",
+            "{\"traceid\":\"4f436fc7833cb00dadcfd2e0a912755d\",\"spanid\":\"5c0cb7ad277e7fbf\",\"severity\":\"WARN\",\"flags\":1,\"attributes\":{\"error\":\"EvaluationError { code: General(\\\"request timeout or cancelled\\\"), message: Some(\\\"Timeout expired\\\") }\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"shipping::shipping_service\"}}"
+          ],
+          [
+            "1789546460445003062",
+            "{\"traceid\":\"25d29531f0b56bff1e5484f7b916bca2\",\"spanid\":\"e993a03b64ecc405\",\"severity\":\"WARN\",\"flags\":1,\"attributes\":{\"error\":\"EvaluationError { code: General(\\\"request timeout or cancelled\\\"), message: Some(\\\"Timeout expired\\\") }\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"shipping::shipping_service\"}}"
+          ],
+          [
+            "1789546400725728027",
+            "{\"traceid\":\"09397371ac1f940a4a5ed5b3fb5fe47f\",\"spanid\":\"7926bb4617e9f97f\",\"severity\":\"WARN\",\"flags\":1,\"attributes\":{\"error\":\"EvaluationError { code: General(\\\"request timeout or cancelled\\\"), message: Some(\\\"Timeout expired\\\") }\"},\"resources\":{\"host.arch\":\"x86_64\",\"k8s.namespace.name\":\"otel-demo\",\"os.type\":\"linux\",\"process.command_args\":[\"./shipping\"],\"process.pid\":1,\"process.runtime.description\":\"rustc 1.97.0 (2d8144b78 2026-07-07)\",\"process.runtime.name\":\"rustc\",\"process.runtime.version\":\"1.97.0\",\"service.criticality\":\"high\",\"service.name\":\"shipping\",\"service.namespace\":\"opentelemetry-demo\",\"service.version\":\"2.2.0\",\"telemetry.sdk.language\":\"rust\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"0.32.1\"},\"instrumentation_scope\":{\"name\":\"shipping::shipping_service\"}}"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?ad\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?ad\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?load-generator\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?load-generator\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?accounting\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?accounting\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?fraud-detection\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?fraud-detection\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?quote\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?quote\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?flagd\"} |~ \"(?i)(error|exception|fail)\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  },
+  {
+    "logql": "{service_name=~\"(opentelemetry-demo/)?flagd\"} |~ \"(?i)warn\"",
+    "start": "2026-09-16T08:09:46.968916+00:00",
+    "end": "2026-09-16T08:16:47.199366+00:00",
+    "result": []
+  }
+]

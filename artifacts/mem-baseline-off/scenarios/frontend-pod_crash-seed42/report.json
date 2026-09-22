@@ -1,0 +1,84 @@
+{
+  "incident_id": "frontend-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-18T05:53:25.135038+00:00",
+  "investigation_end_ts": "2026-09-18T05:53:43.088947+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "pod_crash",
+      "description": "The frontend container was killed (Killing: Stopping container frontend) and a replacement pod (frontend-76cbddfbcc-zm8l8) was rescheduled, created and started, indicating a pod crash. The transient container termination explains the serving-gap swing in frontend request_rate, while no application error logs or error-rate spike were observed.",
+      "confidence": 0.78,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Stopping container frontend",
+          "observed_value": "container frontend stopped (count=1); replacement pod frontend-76cbddfbcc-zm8l8 Scheduled/Created/Started",
+          "expected_baseline": "no container kill events; single stable frontend pod set"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=148.190 p50=8.009 p95=432.873 p99=570.433 max=604.823, anomaly flagged",
+          "expected_baseline": "steady request_rate without serving-gap swings"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"frontend\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "application error lines present if fault were in-process (http_abort/high_latency)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "unknown",
+      "description": "Elevated request-rate variability could alternatively reflect a brief frontend unavailability period with retries/backpressure, but the flat error rate makes an internal application fault unlikely as the primary cause.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.006 p50=0.000 p95=0.019 p99=0.019 max=0.019",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "cpu_stress",
+      "description": "Resource-pressure stress was considered but ruled out: CPU usage (mean 0.072) and memory working set (mean ~253 MB) stayed within normal ranges, and the 5m restart counter was zero.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.072 p50=0.071 p95=0.091 p99=0.091 max=0.091",
+          "expected_baseline": "stable sub-0.1 CPU cores under normal load"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"frontend-.*\"})",
+          "observed_value": "mean=252939195.733 p95=294575718.400 max=296189952.000",
+          "expected_baseline": "no monotonic growth toward memory limit"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm the frontend container termination cause via kubectl describe pod / last-state (exit code, OOMKilled vs external kill) for frontend-76cbddfbcc-* to determine if the crash was a kill or a resource eviction.",
+    "Verify the frontend Deployment reached full readiness after frontend-76cbddfbcc-zm8l8 started and that frontend request_rate recovered to a steady baseline.",
+    "Ensure frontend has adequate replicas and a PodDisruptionBudget plus liveness/readiness probes so a single pod kill does not create a serving gap.",
+    "Add alerting on kube_pod_container_status_last_terminated_reason and container kill events for frontend in otel-demo to catch future pod crashes early."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 17.953909,
+  "cost_usd": 0.0029445499999999998,
+  "total_prompt_tokens": 4432,
+  "total_completion_tokens": 1327,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

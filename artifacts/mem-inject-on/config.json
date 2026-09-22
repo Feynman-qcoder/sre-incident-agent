@@ -1,0 +1,9 @@
+{
+  "run_id": "mem-inject-on",
+  "mode": "replay",
+  "model": "deepseek-flash",
+  "seed": 42,
+  "agent_version": "0.1.0",
+  "n_scenarios": 7,
+  "ts": "2026-09-18T06:01:59.549644+00:00"
+}

@@ -1,0 +1,108 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-a46af510",
+  "investigation_start_ts": "2026-09-17T14:25:09.614352+00:00",
+  "investigation_end_ts": "2026-09-17T14:25:46.074224+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "high_latency",
+      "description": "The payment service (a leaf dependency of checkout) shows its own SERVER-span p99 pinned at the 10000ms ceiling with normal CPU, flat memory, zero restarts and no error logs, indicating an injected/induced latency fault local to payment rather than resource pressure or a downstream dependency.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "payment p99_latency_ms=10000 (mean=10000, p50=10000, max=10000)",
+          "expected_baseline": "payment p99 < 50ms (healthy leaf, no downstream)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.007 cores (flat, no spike)",
+          "expected_baseline": "cpu_usage ~0.005-0.01 cores; would spike under cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"payment-.*\"})",
+          "observed_value": "memory=202543104 bytes (~193 MiB), stable across window",
+          "expected_baseline": "stable working-set; would climb under memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0",
+          "expected_baseline": "0 restarts; would be >0 under pod_crash"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"payment\"} |= \"error\"",
+          "observed_value": "no logs found",
+          "expected_baseline": "no error logs during healthy operation -> confirms latency, not errors"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "checkout's SERVER-span p99 is also pinned at 10000ms because it blocks synchronously on the slow payment call; its own error rate is zero and non-payment children (cart, currency, product-catalog, shipping) are healthy, so the checkout latency is inherited propagation rather than a checkout-local fault.",
+      "confidence": 0.18,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "checkout p99_latency_ms=10000 (mean=10000, max=10000)",
+          "expected_baseline": "checkout p99 ~ tens of ms; elevated only because it waits on payment"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate=0.0",
+          "expected_baseline": "error_rate < 0.01; zero here rules out http_abort/dependency errors"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "1b0095c07519385f",
+          "observed_value": "user_checkout_multi | 63766ms | ok",
+          "expected_baseline": "checkout traces < ~500ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "frontend inherits the latency end-to-end: its SERVER-span p99 is pinned at 10000ms purely because it calls the slow checkout/payment path through checkout; its other dependencies (recommendation, product-catalog) are healthy, confirming this is downstream-driven, not frontend-local.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "frontend p99_latency_ms=10000 (mean=10000, max=10000)",
+          "expected_baseline": "frontend p99 ~ hundreds of ms; elevated due to slow checkout->payment"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "product-catalog p99_latency_ms=48.525 (healthy)",
+          "expected_baseline": "p99 < 50ms -> other frontend dependencies are healthy"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the payment service deployment for an injected latency fault (e.g. flagd fault-injection flag such as 'paymentLatency' / a sleep or network-delay injection) and disable/roll it back.",
+    "Check payment pod/network for added latency (sidecar or tc netem delay); restart/redeploy the payment pod to clear the injected delay if a flag is not the source.",
+    "Add/verify a client timeout and circuit breaker on checkout's call to payment so a single slow leaf dependency cannot pin frontend p99 at the 10s ceiling.",
+    "Confirm latency returns to baseline (payment p99 < 50ms, checkout/frontend p99 back to sub-second) and validate with user_checkout traces."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.8,
+  "latency_s": 36.459872,
+  "cost_usd": 0.0040684,
+  "total_prompt_tokens": 6980,
+  "total_completion_tokens": 1548,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

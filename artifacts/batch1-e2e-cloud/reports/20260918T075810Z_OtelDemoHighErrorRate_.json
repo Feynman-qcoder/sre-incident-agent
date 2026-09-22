@@ -1,0 +1,90 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-3a0d3ec3",
+  "investigation_start_ts": "2026-09-18T07:56:39.017406+00:00",
+  "investigation_end_ts": "2026-09-18T07:58:10.614341+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog server-side latency is pinned at ~10000 ms throughout the window and is the only dependency shared by every slow service (recommendation, checkout, frontend). Its hung requests propagate up the browse path and surface as the frontend error spike the watchdog alerted on.",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "product-catalog p50=10000ms p95=10000ms p99=10000ms max=10000ms mean=8350ms",
+          "expected_baseline": "p99 < 100ms for product-catalog server spans (last 24h)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "4b93191b41acc1be",
+          "observed_value": "user_browse_product span 15000ms (product-catalog-dependent path); error_only trace search returned p95_duration=30006ms with 0 server error spans",
+          "expected_baseline": "user_browse_product p95 < 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "frontend error_rate p99=0.962/s max=3.019/s, anomaly window 2026-09-18T04:48:55→06:02:25 (symptom of downstream hangs)",
+          "expected_baseline": "frontend error_rate < 0.01/s"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "flagd",
+      "fault_type": "high_latency",
+      "description": "flagd, a leaf service with no application dependencies, independently shows the same pinned ~10000 ms server latency. If latency is injected at flagd and product-catalog/recommendation evaluate flags synchronously per request, the identical cascade is explained with flagd as the single origin.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "flagd p50=10000ms p95=10000ms p99=10000ms mean=6845ms",
+          "expected_baseline": "flagd p99 < 50ms (lightweight flag evaluation)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "frontend server-side p99 is pinned at 10000 ms and it is the only service with a spiking error rate, but its CPU usage and pod restart count are normal, indicating propagated downstream latency rather than a frontend-intrinsic fault.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "frontend p50=10000ms p95=10000ms p99=10000ms mean=9975ms",
+          "expected_baseline": "frontend p99 < 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "frontend cpu usage mean=0.017 cores, p99=0.024, max=0.041 (normal)",
+          "expected_baseline": "no CPU saturation; excludes cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "frontend pod restarts = 0 for entire window",
+          "expected_baseline": "0 restarts; excludes pod_crash"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the product-catalog deployment and restart it if its gRPC handler is blocked; a pinned p99 of ~10s indicates a hung/blocked dependency or injected delay.",
+    "Review and roll back the flagd feature-flag change that introduced the latency fault (e.g. productCatalogFailure / latency flag) and verify flagd OFREP response time returns to <50ms.",
+    "Add or tighten client-side timeouts and circuit breakers on frontend and recommendation calls to product-catalog so downstream hangs do not become user-facing error spikes.",
+    "Confirm recovery by re-checking product-catalog p99 latency and frontend error_rate metrics against baseline."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.75,
+  "latency_s": 91.596935,
+  "cost_usd": 0.00399665,
+  "total_prompt_tokens": 5968,
+  "total_completion_tokens": 1817,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

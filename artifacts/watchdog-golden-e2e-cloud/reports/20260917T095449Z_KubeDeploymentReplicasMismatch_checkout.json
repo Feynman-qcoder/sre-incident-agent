@@ -1,0 +1,85 @@
+{
+  "incident_id": "watchdog-KubeDeploymentReplicasMismatch-fa7c76e6",
+  "investigation_start_ts": "2026-09-17T09:53:11.535743+00:00",
+  "investigation_end_ts": "2026-09-17T09:54:49.644887+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "A deployment spec change killed the checkout container ('Container checkout definition changed, will be restarted'), and the replacement container in pod checkout-5df89485f4-sjwdb cannot start because the image pull fails with DeadlineExceeded, leaving the pod in ImagePullBackOff / crash-loop back-off. The unavailable replica is the direct cause of the KubeDeploymentReplicasMismatch alert and the collapse of checkout traffic (~0.07 req/s).",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted",
+          "observed_value": "Container kill event on checkout (count=1) at the start of the incident window",
+          "expected_baseline": "No container kill/restart events during steady-state operation"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff",
+          "observed_value": "ImagePullBackOff (count=4) with 'Back-off pulling image \"gcr.io/google-containers/pause:latest\"' (count=4) and 'Failed to pull image ... rpc error: code = DeadlineExceeded' (count=2)",
+          "expected_baseline": "Image pulls succeed; no ErrImagePull (count=3) or ImagePullBackOff events"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "BackOff: Back-off restarting failed container checkout in pod checkout-5df89485f4-sjwdb_otel-demo(f37a0529-b565-4940-bb4f-948166e",
+          "observed_value": "Crash-loop back-off restarting the checkout container in pod checkout-5df89485f4-sjwdb",
+          "expected_baseline": "Container Running; available replicas == desired replicas"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.072 req/s, p50=0.076, p95=0.103, max=0.105 req/s during window",
+          "expected_baseline": "Normal checkout server request rate of multiple req/s under load-generator traffic"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "During the kill/restart cycle, checkout requests stalled: trace search over the window reports p95 duration of 24013ms, while surviving fast traces complete in 9-10ms, indicating requests hanging while the pod was unavailable.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=checkout, error_only=true, 2026-09-17T09:48:19.685975+00:00..2026-09-17T09:50:28.699787+00:00)",
+          "observed_value": "5 traces total, 0 with errors, p95_duration=24013ms; sample traces c4b53887b8d706aa (9ms), 4096b5a9989b3b0d (10ms), 87c01a37132e72ae (10ms)",
+          "expected_baseline": "checkout p95 latency well under 1s (fast traces observed at 9-10ms)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Upstream blast radius: frontend, which depends on checkout, shows an elevated error rate (max 0.063) during the window as its checkout dependency becomes unavailable due to the ImagePullBackOff crash-loop.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "frontend error_rate mean=0.013, p50=0.000, p95=0.050, max=0.063 during window",
+          "expected_baseline": "frontend error_rate ~0 under normal operation"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Roll back the checkout Deployment to the previous working container definition — the kill event 'Container checkout definition changed, will be restarted' shows a recent spec change triggered the outage.",
+    "Fix the image pull failure: the pull of gcr.io/google-containers/pause:latest fails with DeadlineExceeded — verify registry connectivity/DNS, use an accessible mirror or pre-pulled image, or set imagePullPolicy: IfNotPresent.",
+    "Delete the stuck pod checkout-5df89485f4-sjwdb (in ImagePullBackOff) once the image issue is resolved so the ReplicaSet creates a healthy replacement and replicas match desired state.",
+    "Verify recovery: confirm deployment replicas match, checkout request rate returns to baseline, and frontend error_rate returns to ~0.",
+    "Add alerting on ErrImagePull/ImagePullBackOff events and gate rollout on image pull pre-checks to catch this failure mode earlier."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 98.109144,
+  "cost_usd": 0.0039942,
+  "total_prompt_tokens": 4452,
+  "total_completion_tokens": 2320,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

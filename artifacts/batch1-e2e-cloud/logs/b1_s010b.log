@@ -1,0 +1,13 @@
+2026-09-18 15:28:35 [info     ] injecting_fault                dry_run=False fault_service=quote fault_type=high_latency scenario_id=quote-high_latency-seed42
+2026-09-18 15:28:35 [error    ] kubectl_failed                 cmd='kubectl --context kind-otel-sre-copilot apply -f /tmp/tmp_ibk7ciq.yaml --validate=false' stderr='Error from server (Forbidden): error when creating "/tmp/tmp_ibk7ciq.yaml": admission webhook "vnetworkchaos.kb.io" denied the request: Spec.direction: Invalid value: "both": `from` and `both` direction cannot be used when targets is empty in netem action\n'
+Traceback (most recent call last):
+  File "/root/otel-sre-copilot/scripts/inject_and_snapshot.py", line 514, in <module>
+    main()
+  File "/root/otel-sre-copilot/scripts/inject_and_snapshot.py", line 510, in main
+    inject(args.scenario, dry_run=args.dry_run)
+  File "/root/otel-sre-copilot/scripts/inject_and_snapshot.py", line 189, in inject
+    run_kubectl(["apply", "-f", tmp_path, "--validate=false"], dry_run=dry_run)
+  File "/root/otel-sre-copilot/scripts/inject_and_snapshot.py", line 157, in run_kubectl
+    raise RuntimeError(f"kubectl failed: {last_stderr}")
+RuntimeError: kubectl failed: Error from server (Forbidden): error when creating "/tmp/tmp_ibk7ciq.yaml": admission webhook "vnetworkchaos.kb.io" denied the request: Spec.direction: Invalid value: "both": `from` and `both` direction cannot be used when targets is empty in netem action
+

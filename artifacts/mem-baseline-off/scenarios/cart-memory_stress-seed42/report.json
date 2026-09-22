@@ -1,0 +1,84 @@
+{
+  "incident_id": "cart-memory_stress-seed42",
+  "investigation_start_ts": "2026-09-18T05:52:36.075427+00:00",
+  "investigation_end_ts": "2026-09-18T05:53:01.138197+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "cart",
+      "fault_type": "memory_stress",
+      "description": "The cart service shows an elevated and ramping container memory working set during the incident window, consistent with an injected memory-stress workload, while request errors remain at zero.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"cart-.*\"})",
+          "observed_value": "mean=93337463 B, p50=90976256 B, p95=108041011 B, p99=108279562 B, max=108339200 B during 08:03-08:10 (~90MB -> ~108MB ramp)",
+          "expected_baseline": "flat steady-state working set; comparable service product-catalog ~24.5MB with no in-window ramp"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=24191249 B, max=24584192 B, flat with no ramp",
+          "expected_baseline": "cart working set above this and rising during window"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.000, max=0.000 error rate throughout window",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "cart",
+      "fault_type": "high_latency",
+      "description": "Secondary effect: cart server-side p99 latency rose well above its median during the window, plausibly driven by memory-pressure-induced stalls.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=12.136 ms, p50=4.262 ms, p95=53.276 ms, p99=73.514 ms, max=78.573 ms; anomaly flagged [1789545942.954 -> 1789545972.954]",
+          "expected_baseline": "cart p99 baseline ~4 ms (p50=4.262 ms)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "cart",
+      "fault_type": "pod_crash",
+      "description": "Cart container shows a restart during the window (restart counter increase plus pod lifecycle Created/Started events), which could be OOM-driven secondary to memory stress.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"cart-.*\"}[5m])) or vector(0)",
+          "observed_value": "mean=0.619, p50=1.031, p95=1.031, p99=1.031, max=1.031 restarts within 5m",
+          "expected_baseline": "0 restarts"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Created: Container created (count=2)",
+          "observed_value": "Container created/Started count=2 for cart pod in otel-demo",
+          "expected_baseline": "1 (no restart) in a steady-state window"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm cart pod memory limit vs working set and check for OOMKilled/restart history (kubectl describe pod -n otel-demo -l app=cart).",
+    "If memory_stress is injected (fault seed cart-memory_stress-seed42), stop the memory-stress experiment or raise the cart container memory limit/requests.",
+    "Scale cart horizontally and restart the affected cart pod to reclaim memory and clear latency stalls.",
+    "Add memory-usage growth-rate alerting and a p99 latency SLO alert for cart to catch recurrence."
+  ],
+  "fault_type_classification": "memory_stress",
+  "grounding_score": 1.0,
+  "latency_s": 25.06277,
+  "cost_usd": 0.0035189,
+  "total_prompt_tokens": 5146,
+  "total_completion_tokens": 1636,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

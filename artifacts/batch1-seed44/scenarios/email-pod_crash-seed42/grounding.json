@@ -1,0 +1,22 @@
+{
+  "grounding_score": 0.7143,
+  "verified": 5,
+  "total": 7,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "email",
+      "signal_type": "k8s_event",
+      "query_or_id": "BackOff: Back-off restarting failed container email in pod email-7699887dd9-rnbxw_otel-demo(c9cf2589-71fd-45ed-bb7c-39ad",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "1",
+      "service": "email",
+      "signal_type": "k8s_event",
+      "query_or_id": "Killing: Container email definition changed, will be restarted (count=2)",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": true
+}

@@ -1,0 +1,62 @@
+# 固定 NodePort 暴露 Tempo / Loki 给宿主
+# =============================================================================
+# 为什么需要这个文件（2026-09-16 实测）：
+#   kind 的 extraPortMappings 把宿主端口映射到节点的**固定** NodePort：
+#       宿主 3200 → 节点 30200（Tempo）
+#       宿主 3100 → 节点 30100（Loki）
+#   但这两个 chart 都无法把 NodePort pin 到指定值：
+#     * grafana/tempo 1.24.4 的 templates/service.yaml **完全不渲染 nodePort**
+#       → `service.nodePort: 30200` 是无效配置，K8s 随机分配（实测拿到 32540）
+#     * grafana/loki 7.3.0 的 templates/single-binary/service.yaml **只读 service.type、
+#       不渲染 nodePort**（设成 NodePort 也只会随机分配）
+#   → 因此另建「固定 NodePort」的附加 Service。**不改动 chart 自建的 Service**，
+#     集群内部引用（otel-collector → tempo:4317 / loki:3100）完全不受影响。
+#
+# Prometheus 不需要这里：kube-prometheus-stack 的 service 模板**支持** nodePort，
+# 已在 infra/helm/prometheus-values.yaml 配好（service.type=NodePort / nodePort=30090）。
+#
+# 应用：  kubectl apply -f infra/expose-nodeports.yaml
+# 校验：  kubectl -n monitoring get svc tempo-nodeport loki-nodeport
+#         kubectl -n monitoring get endpoints tempo-nodeport loki-nodeport   # 必须有 ENDPOINTS
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo-nodeport
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: sre-incident-agent
+spec:
+  type: NodePort
+  selector:
+    # 取自 tempo chart 的 tempo.selectorLabels
+    app.kubernetes.io/name: tempo
+    app.kubernetes.io/instance: tempo
+  ports:
+    - name: tempo-http
+      port: 3200
+      targetPort: 3200
+      nodePort: 30200
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki-nodeport
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: sre-incident-agent
+spec:
+  type: NodePort
+  selector:
+    # 取自 loki chart 的 loki.singleBinarySelectorLabels（= selectorLabels + component）
+    # component: single-binary 这一条很关键：用来排除 loki-canary / memberlist 等 pod
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/instance: loki
+    app.kubernetes.io/component: single-binary
+  ports:
+    - name: loki-http
+      port: 3100
+      targetPort: 3100
+      nodePort: 30100
+      protocol: TCP

@@ -1,0 +1,35 @@
+metadata:
+  scenario_id: frontend-high_latency-seed42
+  fault_service: frontend
+  fault_type: high_latency
+  seed: 42
+  fault_duration_s: 300
+  window_extra_s: 60
+  namespace: otel-demo
+  description: >
+    Batch-1 new scenario 009: 1200ms network delay on frontend (NOT 1500ms — frontend's own
+    baseline p99 is already the highest among demo services, so 1200ms keeps the injection
+    discriminative against the relative-jump alert (>4.5x vs 30m ago) without pushing total
+    request latency past k6/browser timeouts that would flatten the signal differently).
+    Expected: frontend SERVER-span p99 spike, LatencyP99 fires (class-A chain).
+
+chaos_manifest:
+  apiVersion: chaos-mesh.org/v1alpha1
+  kind: NetworkChaos
+  metadata:
+    name: frontend-latency-seed42
+    namespace: chaos-mesh
+  spec:
+    action: delay
+    mode: all
+    selector:
+      namespaces:
+        - otel-demo
+      labelSelectors:
+        app.kubernetes.io/component: frontend
+    delay:
+      latency: "1200ms"
+      jitter: "300ms"
+      correlation: "25"
+    duration: "300s"
+    direction: to

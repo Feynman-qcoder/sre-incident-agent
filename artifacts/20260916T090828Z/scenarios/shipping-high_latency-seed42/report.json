@@ -1,0 +1,97 @@
+{
+  "incident_id": "shipping-high_latency-seed42",
+  "investigation_start_ts": "2026-09-16T09:31:13.100392+00:00",
+  "investigation_end_ts": "2026-09-16T09:37:58.602827+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "The shipping service exhibits a severe latency anomaly (p99 up to 9622ms, max 9650ms, mean ~5700ms) sustained across the entire incident window. The fault is intrinsic to shipping: error rate is near zero (max 0.012), CPU is flat at 0.002 cores, memory is flat at ~12.5MB, pod restarts are 0, and its only downstream dependency (quote) is healthy at 1.98ms p99. This is consistent with an injected processing delay inside the shipping service rather than resource pressure, crashes, errors, or dependency failure.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=5700.150, p50=4952.500, p95=9510.000, p99=9622.000, max=9650.000 over incident window",
+          "expected_baseline": "p99_latency_ms < 100ms for shipping (its dependency quote responds in ~2ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.004, p50=0.000, p95=0.011, p99=0.012, max=0.012 — no error spike",
+          "expected_baseline": "error_rate < 0.01; confirms latency-only fault, not http_abort"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "cpu_usage flat at 0.002 cores (mean=p50=p95=p99=max=0.002) across window",
+          "expected_baseline": "no cpu_stress; rules out CPU saturation as cause"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"shipping-.*\"})",
+          "observed_value": "memory flat ~12.5MB (mean=12533760, max=12701696 bytes)",
+          "expected_baseline": "no memory_stress; rules out memory pressure"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts = 0.000 across entire window",
+          "expected_baseline": "0 restarts; rules out pod_crash/OOMKill"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "quote",
+      "fault_type": "dependency_failure",
+      "description": "Hypothesis that shipping latency was caused by its downstream dependency quote (shipping → quote per topology) failing or slowing down. Investigated and ruled out: quote's p99 latency is a flat 1.98ms across the entire window, so the delay does not originate from the quote dependency.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "quote p99_latency_ms = 1.980 flat across window (mean=p50=p95=p99=max=1.980)",
+          "expected_baseline": "quote healthy; downstream dependency failure ruled out as root cause"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "shipping",
+      "fault_type": "http_abort",
+      "description": "Hypothesis that shipping was failing requests (error/abort fault) causing upstream slowness. Ruled out: error rate stays near zero (max 0.012), no error traces found for shipping in the window, and no error logs found for shipping in the window.",
+      "confidence": 0.03,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces service_name=shipping, min_duration_ms=0, start=2026-09-16T08:09:46.968916+00:00, end=2026-09-16T08:16:47.199366+00:00",
+          "observed_value": "[no traces found] — no shipping traces (including error traces) returned in window",
+          "expected_baseline": "error traces present if http_abort fault active; absence supports latency-only fault"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"shipping\"} |= \"error\"",
+          "observed_value": "[no logs found] — no error logs for shipping in window",
+          "expected_baseline": "error logs present if http_abort fault active; absence supports latency-only fault"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the shipping service deployment for recently introduced artificial delays (e.g., latency fault flags in flagd feature-flag config, sleep() calls in shipping handlers, or a bad image rollout) and roll back the offending change.",
+    "Check flagd feature-flag evaluation for shipping-related latency flags and disable any experimental delay flags.",
+    "Add a p99 latency SLO alert on shipping (e.g., p99 > 500ms for 2m) so latency-only faults are detected even when error rate stays at zero.",
+    "Review impact on checkout and frontend, since checkout→shipping and frontend→shipping call paths absorb the ~5-9.6s delay and degrade user-facing checkout performance.",
+    "After remediation, confirm shipping p99 returns to sub-100ms baseline and quote dependency remains healthy."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 405.502435,
+  "cost_usd": 0.00342895,
+  "total_prompt_tokens": 4106,
+  "total_completion_tokens": 1897,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

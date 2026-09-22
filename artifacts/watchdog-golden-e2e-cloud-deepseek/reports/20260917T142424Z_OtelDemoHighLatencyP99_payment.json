@@ -1,0 +1,109 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-796321aa",
+  "investigation_start_ts": "2026-09-17T14:23:35.731225+00:00",
+  "investigation_end_ts": "2026-09-17T14:24:24.126817+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "high_latency",
+      "description": "The payment service, a leaf dependency with no downstream calls, shows intrinsic server-side p99 latency saturated at the 10s histogram ceiling, orders of magnitude above peer leaves (~2-9ms). This latency propagates up through checkout to frontend, producing the end-to-end user_checkout trace durations of 29-45s.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms (saturated ceiling)",
+          "expected_baseline": "p99 ~1.98-8.96 ms (ad/quote/currency/product-catalog leaves)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name='payment', min_duration_ms=3000)",
+          "observed_value": "p95_duration=26261 ms; trace dff2f85a6e0c79d0 'user_checkout_multi' 29072 ms",
+          "expected_baseline": null
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.006 (normal)",
+          "expected_baseline": "~0.006 cores (no CPU pressure; excludes cpu_stress)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "< 0.01 (no errors; excludes http_abort)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend server p99 is saturated at the 10s ceiling, reflecting propagated latency from its downstream checkout/payment path rather than an intrinsic fault. It is the service surfaced by the OtelDemoHighLatencyP99 watchdog.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.000 ms (saturated)",
+          "expected_baseline": "p99 should track downstream sum (~tens of ms)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name='frontend', min_duration_ms=3000)",
+          "observed_value": "p95_duration=45613 ms; trace 33e5b73c30a719f3 45608 ms",
+          "expected_baseline": null
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "< 0.01 (no errors; excludes http_abort)"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout is the intermediary in the frontend->checkout->payment call path and its request traces show elevated durations; however this is a consequence of its slow payment dependency rather than an intrinsic checkout fault.",
+      "confidence": 0.08,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name='checkout', min_duration_ms=1000)",
+          "observed_value": "traces present (user_checkout_multi 35087 ms, user_checkout_single 15009 ms), 0 errors",
+          "expected_baseline": "checkout trace durations ~tens of ms when dependencies healthy"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "< 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.003 (normal)",
+          "expected_baseline": "~0.003 cores (no CPU pressure)"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the payment service for an injected latency fault (e.g., flagd feature-flag latency injection in the OTel demo) and disable it.",
+    "Profile payment pod processing time (GC, thread contention, external calls); payment is a leaf so latency is intrinsic to the service.",
+    "If latency is resource-driven, check payment CPU/memory limits and vertical-scale; current CPU (~0.006 cores) and RSS (~202 MB) look nominal, pointing to injected/app-level delay.",
+    "Restart/redeploy payment pods to clear any stuck state and confirm p99 returns to single-digit ms.",
+    "Verify recovery end-to-end by re-checking frontend and payment server p99 latency and user_checkout trace durations."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.8,
+  "latency_s": 48.395592,
+  "cost_usd": 0.0049707,
+  "total_prompt_tokens": 9768,
+  "total_completion_tokens": 1478,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

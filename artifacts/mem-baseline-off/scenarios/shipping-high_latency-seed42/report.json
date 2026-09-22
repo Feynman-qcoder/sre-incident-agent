@@ -1,0 +1,90 @@
+{
+  "incident_id": "shipping-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T05:53:01.219601+00:00",
+  "investigation_end_ts": "2026-09-18T05:53:25.051544+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "The shipping service shows a severe p99 latency spike (mean ~5700ms, peaking at 9650ms) while its error rate, CPU, memory, and restart counts remain normal, indicating an injected latency fault local to shipping. The latency propagates upstream to checkout and frontend, both of which call shipping per the service topology.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency mean=5700.15ms, p50=4952.5ms, p95=9510ms, max=9650ms",
+          "expected_baseline": "shipping p99 < 100ms under normal operation"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.004, max=0.012 (near zero)",
+          "expected_baseline": "error_rate < 0.01 — confirms a latency-only fault with no errors"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.002 cores (flat across window)",
+          "expected_baseline": "no CPU saturation — rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"shipping-.*\"})",
+          "observed_value": "memory=~12.53MB (max 12.70MB, stable)",
+          "expected_baseline": "no memory growth — rules out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"shipping-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0",
+          "expected_baseline": "0 restarts — rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout p99 latency is elevated to ~9950ms. As checkout calls shipping in the topology, this is most consistent with downstream latency propagation from the shipping fault rather than a primary fault.",
+      "confidence": 0.35,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency mean=7299.96ms, p50=9950ms, p95=9950ms, max=9950ms",
+          "expected_baseline": "checkout p99 < 200ms under normal operation"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend p99 latency is elevated (~8100ms). Since frontend calls both checkout and shipping, this reflects upstream propagation of the shipping latency fault.",
+      "confidence": 0.2,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99 latency mean=4951.93ms, p50=7357.14ms, p95=7869.38ms, max=8133.33ms",
+          "expected_baseline": "frontend p99 < 300ms under normal operation"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the shipping service deployment for an injected latency fault (e.g. sleep/network-delay chaos experiment) and remove or roll back the injection.",
+    "Verify shipping's downstream dependency 'quote' is healthy to rule out a slow downstream call as the latency source.",
+    "After shipping latency normalizes, confirm p99 latency recovery in its callers checkout and frontend.",
+    "Add lower-threshold p99 latency alerting (<500ms) on shipping to catch latency injections earlier."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 23.831943,
+  "cost_usd": 0.0033995500000000003,
+  "total_prompt_tokens": 4883,
+  "total_completion_tokens": 1610,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

@@ -1,0 +1,127 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-e972d4f8",
+  "investigation_start_ts": "2026-09-17T11:06:51.488520+00:00",
+  "investigation_end_ts": "2026-09-17T11:08:47.871199+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "The checkout service exhibits a flat 10000ms p99 server-side latency across the entire incident window while all of its downstream dependencies (cart, payment, email, shipping, currency, product-catalog) remain fast (<50ms). No errors, no CPU/memory stress, and no pod restarts were observed, indicating a fixed ~10s delay in checkout request handling rather than resource saturation or a failing dependency.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=~\"frontend|checkout|cart|payment|product-catalog|recommendation|shipping|currency|email|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "checkout p99_latency_ms=10000.000 (mean/p50/p95/p99/max all 10000.000) for entire window; downstream deps: cart=9.8ms, payment=1.98ms, email=47.6ms, shipping=4.85ms, currency=1.98ms, product-catalog=48.9ms",
+          "expected_baseline": "checkout p99_latency_ms < 100ms; downstream leaf services < 50ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=~\"frontend|checkout|cart|payment|product-catalog|recommendation|shipping|currency|email|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) by (service_name) or vector(0)",
+          "observed_value": "error_rate=0.000 across all services including checkout (no anomaly)",
+          "expected_baseline": "error_rate < 0.01 — confirms latency-only fault, not http_abort"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.005 cores, max=0.007 cores",
+          "expected_baseline": "no CPU saturation — rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "memory mean=24923648 bytes (~25MB), max=25731072 bytes",
+          "expected_baseline": "stable ~25MB working set — rules out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0.000 for entire window",
+          "expected_baseline": "0 restarts — rules out pod_crash"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "1bca1a849d24103a",
+          "observed_value": "checkout trace 'order-consumed' duration=25976ms, status ok (no error)",
+          "expected_baseline": "checkout traces typically complete in < 1s"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "a71d28df64cefb64",
+          "observed_value": "checkout trace 'user_checkout_multi' duration=20039ms, status ok; trace search: 20 traces, 0 errors, p95_duration=354735ms",
+          "expected_baseline": "checkout traces typically complete in < 1s with 0 errors"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"error\"",
+          "observed_value": "[no logs found] — zero error log lines from checkout during window",
+          "expected_baseline": "no error logs — consistent with latency-only fault"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=checkout, since_seconds=600)",
+          "observed_value": "[no K8s events found] — no OOMKilled, BackOff, or crash events for checkout pods",
+          "expected_baseline": "no pod lifecycle events — rules out pod_crash"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend p99 latency is also pinned at 10000ms, but this is propagation from its synchronous dependency on checkout (topology: frontend → checkout), not a frontend fault. Frontend's other dependencies (cart, recommendation, product-catalog, shipping, currency, ad) all remained fast.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=~\"frontend|checkout|cart|payment|product-catalog|recommendation|shipping|currency|email|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "frontend p99_latency_ms=10000.000 (identical to checkout); recommendation=4.97ms, ad=1.98ms",
+          "expected_baseline": "frontend p99_latency_ms < 500ms; matches checkout's 10s delay via synchronous call chain"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "checkout request_rate mean=0.108 req/s, max=0.267 req/s — traffic flowing normally through frontend→checkout",
+          "expected_baseline": "normal request rate, no traffic drop"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "A failing or slow downstream dependency of checkout was considered but is largely ruled out: every checkout dependency (cart, payment, email, shipping, currency, product-catalog, and transitively quote) shows normal sub-50ms p99 latency and zero errors during the window. The 10s delay is contained within checkout's own server spans.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=~\"frontend|checkout|cart|payment|product-catalog|recommendation|shipping|currency|email|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le, service_name))",
+          "observed_value": "all checkout dependencies normal: cart=9.8ms, payment=1.98ms, email=47.6ms, shipping=4.85ms, currency=1.98ms, product-catalog=48.9ms, quote=1.98ms",
+          "expected_baseline": "downstream p99 < 50ms — no downstream latency anomaly to propagate"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=~\"frontend|checkout|cart|payment|product-catalog|recommendation|shipping|currency|email|ad|accounting|fraud-detection|quote|flagd\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) by (service_name) or vector(0)",
+          "observed_value": "error_rate=0.000 for all downstream services — no dependency returning errors",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Check for and terminate any active chaos/latency-injection experiment targeting the checkout service (e.g., Gremlin, Litmus, Chaos Toolkit, or a feature-flag-driven delay in flagd), since the flat 10s p99 with no resource/error signals indicates an injected fixed delay.",
+    "Review recent deployments, config changes, or feature-flag changes to checkout for accidentally introduced sleeps/timeouts or retry storms, and roll back the last change if correlated with the incident window.",
+    "If no injection source is found, restart checkout pods (kubectl rollout restart deployment/checkout -n otel-demo) to clear any stuck in-process state causing the delay.",
+    "Add a latency SLO alert on checkout p99 (e.g., > 1s for 2m) and implement a circuit breaker / timeout budget in frontend for checkout calls so a 10s checkout delay does not propagate to end-user p99.",
+    "Verify recovery by re-querying checkout p99 latency after remediation and confirming it returns to baseline (< 100ms)."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.95,
+  "latency_s": 116.382679,
+  "cost_usd": 0.0046521999999999996,
+  "total_prompt_tokens": 5993,
+  "total_completion_tokens": 2433,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

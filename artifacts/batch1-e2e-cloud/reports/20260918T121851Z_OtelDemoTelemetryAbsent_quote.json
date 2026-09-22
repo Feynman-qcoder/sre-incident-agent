@@ -1,0 +1,115 @@
+{
+  "incident_id": "watchdog-OtelDemoTelemetryAbsent-3fa4f1b3",
+  "investigation_start_ts": "2026-09-18T12:18:20.405422+00:00",
+  "investigation_end_ts": "2026-09-18T12:18:51.731357+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "pod_crash",
+      "description": "The product-catalog pod was killed and rescheduled during the window (Kubernetes events show 'Killing: Stopping container product-catalog' and 'SuccessfulDelete: Deleted pod: product-catalog-5bb7676754-hcfpv', followed by Scheduling/Pulling/Created/Started of replacement pod product-catalog-64896fcd4f-jzqxs). Because product-catalog is the heavily-depended-on leaf (frontend, checkout, recommendation all call it), its crash/restart stalls the whole call graph and produces the observed telemetry blackout (all server request/error rates flat at 0).",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Stopping container product-catalog",
+          "observed_value": "Killing: Stopping container product-catalog (count=1)",
+          "expected_baseline": "no container kill/stop events for a steady-state service"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "SuccessfulDelete: Deleted pod: product-catalog-5bb7676754-hcfpv",
+          "observed_value": "SuccessfulDelete: Deleted pod: product-catalog-5bb7676754-hcfpv (count=1)",
+          "expected_baseline": "pod not deleted during steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Scheduled: Successfully assigned otel-demo/product-catalog-64896fcd4f-jzqxs to otel-sre-copilot-control-plane",
+          "observed_value": "new pod product-catalog-64896fcd4f-jzqxs scheduled and started after the kill",
+          "expected_baseline": "no pod rescheduling during steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.000 across window",
+          "expected_baseline": "product-catalog should serve non-zero server request rate"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000 across window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.001 cores (near-idle, far below the ~2.1 core saturation seen in the prior cpu_stress incident)",
+          "expected_baseline": "product-catalog serving traffic would show measurable CPU above idle"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "Traces involving product-catalog are present but extremely slow (search_traces p95_duration=13818ms; individual spans 3111ms/5000ms/6889ms) with zero errors, indicating severe latency/stall rather than outright request failure — consistent with a restarting/stalled pod whose requests queue behind the outage.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "47411cbf16f7d3b5",
+          "observed_value": "user_browse_product duration=3111ms, status ok",
+          "expected_baseline": "product-catalog p95 well under 1000ms in steady state"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces product-catalog p95_duration=13818ms",
+          "observed_value": "20 traces, 0 errors, p95_duration=13818ms",
+          "expected_baseline": "p95 latency in the low-hundreds of ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Frontend server request rate is flat at 0 and its traces show inflated latency (p95 15001ms) with no errors, the classic propagation signature of an upstream dependency (product-catalog) stalling. Ranked lower because frontend shows no independent resource or crash anomaly (CPU 0.293 mean, normal).",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.000 across window",
+          "expected_baseline": "frontend should serve non-zero server request rate"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "39dc36bbc42bf417",
+          "observed_value": "user_checkout_single duration=15001ms, status ok",
+          "expected_baseline": "checkout flow p95 well under 1000ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.293 cores (normal, no stress)",
+          "expected_baseline": "frontend CPU with active load ~0.3 cores"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm current product-catalog pod health: kubectl get pods -n otel-demo -l app.kubernetes.io/name=product-catalog and kubectl describe pod product-catalog-64896fcd4f-jzqxs to inspect restart/termination reasons.",
+    "Inspect why the pod was deleted (Killing/Stopping container) and whether a chaos/pod-kill fault or OOM/probe failure is involved; stop any injected pod-kill fault if present.",
+    "Verify the OTel Collector / telemetry pipeline (otel-collector pod and exporter connectivity) since server request/error rates are flat at 0 across all services.",
+    "After product-catalog stabilizes, re-check request/error rates and trace latency for product-catalog, frontend, checkout and recommendation to confirm recovery.",
+    "Add/verify PodDisruptionBudget, readiness/liveness probe tuning and replica count so a single product-catalog pod restart does not stall the whole call graph."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.6,
+  "latency_s": 31.325935,
+  "cost_usd": 0.0047740000000000005,
+  "total_prompt_tokens": 8189,
+  "total_completion_tokens": 1817,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

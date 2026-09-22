@@ -1,0 +1,19 @@
+# containerd registry hosts config for registry.k8s.io
+# Used by kind node containerd (containerd 2.x, config_path mode).
+#
+# 为什么需要：kube-prometheus-stack 的 kube-state-metrics 来自 registry.k8s.io
+#   （registry.k8s.io/kube-state-metrics/kube-state-metrics），
+#   而 `registry-mirrors` 只管 docker.io；registry.k8s.io 在国内直连通常很慢。
+#
+# 镜像源映射：
+#   DaoCloud : registry.k8s.io  -> https://k8s.m.daocloud.io
+#   南京大学  : registry.k8s.io  -> https://k8s.mirrors.nju.edu.cn
+# 若某个源取不到目标镜像，containerd 会**自动回退**到下面的 server（原始 registry）。
+
+server = "https://registry.k8s.io"
+
+[host."https://k8s.m.daocloud.io"]
+  capabilities = ["pull", "resolve"]
+
+[host."https://k8s.mirrors.nju.edu.cn"]
+  capabilities = ["pull", "resolve"]

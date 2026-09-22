@@ -1,0 +1,103 @@
+{
+  "incident_id": "checkout-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-16T02:38:10.151381+00:00",
+  "investigation_end_ts": "2026-09-16T02:39:35.376947+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was repeatedly killed and restarted (3 restarts in the 5-minute window, K8s event 'Killing: Stopping container checkout'), taking the service down and producing a 92% error rate on checkout server spans. CPU (0.05 cores) and memory (~100MB) remained flat and normal, ruling out resource exhaustion as the kill trigger.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=3.0 (mean=p50=p95=max) sustained across 13:59-14:06",
+          "expected_baseline": "pod_restarts=0 (stable pods)"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Stopping container checkout (count=1); Started: Started container checkout (count=1)",
+          "observed_value": "Container checkout killed and restarted during incident window",
+          "expected_baseline": "No Killing/BackOff events for checkout pods"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"[2m])) or vector(0)",
+          "observed_value": "error_rate=0.92 (mean=p50=p95=max) throughout window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"checkout-.*\"})",
+          "observed_value": "memory=100000000 bytes (~100MB), flat",
+          "expected_baseline": "memory stable, no OOM pressure (rules out memory_stress)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"checkout-.*\"}[2m]))",
+          "observed_value": "cpu=0.05 cores, flat",
+          "expected_baseline": "cpu stable (rules out cpu_stress)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "t-checkout-err-1",
+          "observed_value": "ERROR trace, 1200ms duration, checkout service during incident window",
+          "expected_baseline": "checkout traces complete without errors"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "http_abort",
+      "description": "Secondary hypothesis: an HTTP abort fault on checkout causing the 92% error rate. Ranked lower because the concurrent restart counter and container kill event make pod crash the more complete explanation.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"[2m])) or vector(0)",
+          "observed_value": "error_rate=0.92 flat across window",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "t-checkout-err-1",
+          "observed_value": "1 error trace, p95_duration=1200ms",
+          "expected_baseline": "no error traces"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Least likely: a failure in one of checkout's downstream dependencies (cart, payment, email, shipping, currency, product-catalog) propagating errors. Weakly supported — the error trace duration (1200ms) is unremarkable and the container kill event points to a local checkout fault rather than downstream propagation.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "t-checkout-err-1",
+          "observed_value": "ERROR trace with p95_duration=1200ms on checkout (no extreme latency indicating downstream hang)",
+          "expected_baseline": "dependency failures would show long-duration checkout traces with downstream span errors"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the killed container's exit details: kubectl describe pod <checkout-pod> -n otel-demo and kubectl logs <checkout-pod> --previous -n otel-demo to determine the kill cause (OOMKilled, liveness probe failure, or external kill).",
+    "Verify checkout container resource requests/limits and liveness/readiness probe thresholds; adjust if the probe was killing a slow-but-healthy container.",
+    "Check for recent deployments/config changes to checkout and roll back if a bad change correlates with the crash window.",
+    "Add alerting on kube_pod_container_status_restarts_total for checkout and a PodDisruptionBudget to reduce blast radius of repeated restarts.",
+    "Once the pod is stable, confirm checkout error_rate returns to baseline (<0.01) and frontend checkout conversion recovers."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 85.225566,
+  "cost_usd": 0.0029484,
+  "total_prompt_tokens": 3756,
+  "total_completion_tokens": 1556,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

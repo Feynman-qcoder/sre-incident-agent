@@ -1,0 +1,115 @@
+{
+  "incident_id": "payment-http_abort-seed42",
+  "investigation_start_ts": "2026-09-16T09:14:01.000903+00:00",
+  "investigation_end_ts": "2026-09-16T09:16:17.266259+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "payment",
+      "fault_type": "http_abort",
+      "description": "Requests to the payment service are being aborted before completing: payment server-span request rate collapsed to near zero (max 0.038 req/s) while error spans, latency, CPU, and pod health all remained nominal. Aborted requests never produce completed server spans, which explains the traffic collapse without any error/latency/resource anomaly.",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.010, p95=0.038, max=0.038 req/s across the incident window",
+          "expected_baseline": "request_rate ~5-10 req/s under load-generator traffic; near-zero traffic indicates requests aborted before server spans complete"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, p95=0.000, max=0.000 (no error server spans recorded)",
+          "expected_baseline": "error_rate < 0.01; absence of error spans combined with traffic collapse indicates aborts occur before span completion"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"payment\",span_kind=\"SPAN_KIND_SERVER\"[2m])) by (le))",
+          "observed_value": "p99_latency mean=3.928ms, p99=4.938ms, max=4.940ms",
+          "expected_baseline": "p99 < 100ms; normal latency rules out high_latency fault"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.007, max=0.007 cores (flat, no spike)",
+          "expected_baseline": "cpu_usage < 0.5 cores; no spike rules out cpu_stress"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=\"otel-demo\", pod_name_prefix=\"payment\", since_seconds=900)",
+          "observed_value": "Only routine events: 'Updated: Successfully update ObservedGeneration and FailedMessage of resource (count=1)'; no OOMKilled, BackOff, or crash events",
+          "expected_baseline": "No crash/kill events expected; rules out pod_crash and memory_stress"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=\"payment\", error_only=true, start=2026-09-16T07:51:35.039063+00:00, end=2026-09-16T07:58:35.271496+00:00)",
+          "observed_value": "[no traces found] - no error traces recorded for payment",
+          "expected_baseline": "0 error traces under normal operation; consistent with aborts preventing span completion"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "dependency_failure",
+      "description": "Checkout depends directly on payment (topology: checkout → payment), so payment aborts propagate as checkout-side payment call failures. However, checkout recorded no error server spans and no error traces in this window, so this is a secondary propagation effect rather than the origin.",
+      "confidence": 0.45,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, p95=0.000, max=0.000 for checkout during the window",
+          "expected_baseline": "error_rate < 0.01; no checkout-side error propagation observed in this window"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=\"checkout\", error_only=true, start=2026-09-16T07:51:35.039063+00:00, end=2026-09-16T07:58:35.271496+00:00)",
+          "observed_value": "[no traces found] - no error traces recorded for checkout",
+          "expected_baseline": "0 error traces under normal operation"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"checkout\"} |= \"payment\"",
+          "observed_value": "[no logs found] - no payment-related error logs from checkout in the window",
+          "expected_baseline": "No payment-related errors expected under normal operation"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "payment",
+      "fault_type": "pod_crash",
+      "description": "Considered and largely ruled out: payment pod events show only routine controller updates with no restarts, OOMKills, or crash-loop backoff, and CPU usage remained flat and low. Retained as a low-confidence fallback only because no direct abort-span evidence was captured.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=\"otel-demo\", pod_name_prefix=\"payment\", since_seconds=900)",
+          "observed_value": "No OOMKilled/BackOff/FailedMount events; only 'Updated: Successfully update ObservedGeneration and FailedMessage of resource (count=1)'",
+          "expected_baseline": "Crash loops would show BackOff/OOMKilled events; none present"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"payment-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.007, max=0.007 cores (flat, no spike)",
+          "expected_baseline": "cpu_usage < 0.5 cores; flat usage inconsistent with crash-loop restart churn"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect and disable the HTTP abort fault injection targeting the payment service (check flagd feature flags / chaos-injection configuration for the abort rule).",
+    "Rollout/restart the payment deployment to clear any injected abort state: kubectl rollout restart deployment/payment -n otel-demo.",
+    "Verify recovery by confirming payment server request rate returns to baseline (~5-10 req/s) and checkout order completion succeeds.",
+    "Add alerting on payment request-rate collapse (e.g., request_rate < 1 req/s for 5 minutes) and on checkout→payment call errors to catch abort faults faster.",
+    "Review payment service logs and middleware for abort/short-circuit handlers once log retention covers the window."
+  ],
+  "fault_type_classification": "http_abort",
+  "grounding_score": 0.8182,
+  "latency_s": 136.265356,
+  "cost_usd": 0.0041506500000000005,
+  "total_prompt_tokens": 4605,
+  "total_completion_tokens": 2418,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

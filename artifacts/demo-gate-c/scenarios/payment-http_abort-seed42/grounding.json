@@ -1,0 +1,22 @@
+{
+  "grounding_score": 0.8571,
+  "verified": 12,
+  "total": 14,
+  "failed_items": [
+    {
+      "rank": "1",
+      "service": "payment",
+      "signal_type": "k8s_event",
+      "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=payment, since_seconds=600)",
+      "reason": "no matching tool call found"
+    },
+    {
+      "rank": "2",
+      "service": "payment",
+      "signal_type": "k8s_event",
+      "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=payment, since_seconds=600)",
+      "reason": "no matching tool call found"
+    }
+  ],
+  "has_hallucination_warning": false
+}

@@ -1,0 +1,85 @@
+{
+  "incident_id": "frontend-pod_crash-seed42",
+  "investigation_start_ts": "2026-09-16T09:37:58.668455+00:00",
+  "investigation_end_ts": "2026-09-16T09:46:05.755278+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "pod_crash",
+      "description": "The frontend container was forcibly killed ('Killing: Stopping container frontend') and replaced by a newly scheduled pod frontend-76cbddfbcc-zm8l8. Because the pod was replaced rather than restarted in place, kube_pod_container_status_restarts_total stayed at 0, hiding the crash from restart-based alerting. The hard kill produced no error spans or error logs, and the load-generator's retries caused a request-rate burst (max 604.8 req/s vs p50 8.0 req/s) at the start of the window while frontend was unavailable.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Stopping container frontend",
+          "observed_value": "get_pod_events(namespace=otel-demo, pod_name_prefix=frontend, since_seconds=1200) returned 'Killing: Stopping container frontend' (count=1) followed by Scheduled/Pulled/Created/Started events for replacement pod frontend-76cbddfbcc-zm8l8",
+          "expected_baseline": "No container Killing events; frontend pod runs continuously without replacement"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts mean=0.000, p50=0.000, p95=0.000, p99=0.000, max=0.000 across the entire window despite the container kill",
+          "expected_baseline": "0 restarts in steady state; the kill manifested as pod replacement (new pod name frontend-76cbddfbcc-zm8l8), so the per-pod restart counter never incremented"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=148.190, p50=8.009, p95=432.873, p99=570.433, max=604.823 req/s with anomaly detected at 2026-09-16T08:14:49 (window start)",
+          "expected_baseline": "steady request_rate ~8 req/s (p50) consistent with normal load-generator traffic"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.006, p50=0.000, p95=0.019, p99=0.019, max=0.019 — no error spike; search_traces(service_name=frontend, error_only=True) returned no error traces and query_loki {service_name=\"frontend\"} |= \"error\" returned no logs",
+          "expected_baseline": "error_rate < 0.01; a hard container kill emits no in-flight error responses, unlike http_abort faults"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "memory_stress",
+      "description": "Alternative hypothesis that the container was OOM-killed due to memory pressure. Ruled out: frontend working-set memory remained flat (~253MB mean, ~296MB max) with no pre-kill climb, and the K8s event shows a plain 'Killing' termination with no OOMKilled reason.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"frontend-.*\"})",
+          "observed_value": "memory mean=252939195.733 bytes (~253MB), p50=252915712.000, p95=294575718.400, max=296189952.000 bytes (~296MB), no anomaly detected",
+          "expected_baseline": "stable ~250MB working set; an OOM kill would be preceded by a memory climb toward the container limit"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Alternative hypothesis that a downstream dependency (checkout, cart, payment, product-catalog) failed and propagated errors to frontend. Ruled out: all downstream services showed near-zero error rates during the window and frontend's own error rate never spiked.",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate mean=0.004, p50=0.000, p95=0.019, max=0.019; cart, payment, and product-catalog error_rate all 0.000 across the window",
+          "expected_baseline": "error_rate < 0.01 for all downstream services"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Run kubectl describe pod on the terminated frontend pod and the replacement frontend-76cbddfbcc-zm8l8 to capture the termination reason, exit code, and who issued the kill (SIGTERM sender, kubelet, or chaos-injection tooling).",
+    "Check Kubernetes audit logs and any chaos-engineering frameworks (e.g., Litmus/pod-kill experiments) active in the cluster to determine whether the kill was injected or operator-initiated.",
+    "Scale frontend to at least 2 replicas with a PodDisruptionBudget so a single pod kill does not take the entire frontend tier offline.",
+    "Add alerting on pod replacement/termination events (Killing events, kube_pod_container_status_terminated) rather than only restart counters, since this crash registered 0 restarts due to pod replacement.",
+    "Configure retry backoff/jitter on the load-generator (and any client retry logic) to prevent the retry storm that drove request_rate from a p50 of 8 req/s to 604 req/s while frontend was unavailable."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 1.0,
+  "latency_s": 487.086823,
+  "cost_usd": 0.00406875,
+  "total_prompt_tokens": 5037,
+  "total_completion_tokens": 2196,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

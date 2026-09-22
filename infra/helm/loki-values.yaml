@@ -1,0 +1,56 @@
+# Grafana Loki — single-binary, emptyDir storage for WSL2/kind
+#
+# ⚠️ NodePort 固化说明（2026-09-17 P1.5 实测，chart loki-7.3.0）：
+#   `singleBinary.service.type: NodePort` 生效（singleBinary 段新增）；但 chart 的
+#   single-binary service 模板 ports 段（http-metrics 3100 / grpc 9095）**不支持
+#   指定 nodePort 号**（仅已禁用的 gateway 组件支持 gateway.service.nodePort）。
+#   端口号固化必须在 make up 后用 kubectl patch：
+#
+#     kubectl -n monitoring patch svc loki --type=merge \
+#       -p '{"spec":{"type":"NodePort","ports":[{"name":"http-metrics","port":3100,
+#            "nodePort":30100,"protocol":"TCP","targetPort":"http-metrics"}]}}'
+#     # kind-config 映射：hostPort 3100 → containerPort 30100。
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  useTestSchema: true
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: false
+  # P1.5：service.type 固化为 NodePort（R1′ 重建后默认 ClusterIP 导致 health-check
+  # FAIL 的修复；nodePort 号见文件头 patch 说明）
+  service:
+    type: NodePort
+  extraVolumes:
+    - name: loki-data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: loki-data
+      mountPath: /var/loki
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+gateway:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false

@@ -1,0 +1,110 @@
+{
+  "incident_id": "watchdog-KubePodNotReady-3d474e83",
+  "investigation_start_ts": "2026-09-17T09:50:28.971296+00:00",
+  "investigation_end_ts": "2026-09-17T09:53:11.472171+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "checkout",
+      "fault_type": "pod_crash",
+      "description": "The checkout container was killed ('Container checkout definition changed, will be restarted') and its replacement pod cannot become Ready because the sandbox pause image gcr.io/google-containers/pause:latest fails to pull (ErrImagePull -> ImagePullBackOff, DeadlineExceeded). This pod-level failure is the direct cause of the KubePodNotReady watchdog alert.",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Killing: Container checkout definition changed, will be restarted (count=1)",
+          "observed_value": "Container kill/restart event on checkout pod at incident time (count=1)",
+          "expected_baseline": "No container kill or restart events for checkout pods during steady state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Error: ImagePullBackOff (count=2)",
+          "observed_value": "checkout pod stuck in ImagePullBackOff (count=2) during window 09:48:19-09:50:28",
+          "expected_baseline": "Image pulls succeed; container reaches Ready state"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Failed: Failed to pull image \"gcr.io/google-containers/pause:latest\": rpc error: code = DeadlineExceeded desc = failed to pull a (count=1)",
+          "observed_value": "Pull of gcr.io/google-containers/pause:latest times out (DeadlineExceeded), blocking sandbox creation",
+          "expected_baseline": "Pause image pull completes without timeout"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate mean=0.072 req/s, p95=0.103, max=0.105 req/s — traffic reaching checkout severely reduced",
+          "expected_baseline": "request_rate at normal load-generator-driven levels (multiple req/s)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.000, max=0.000 — requests hang/are not served rather than erroring, consistent with pod NotReady",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "During the kill/restart window, checkout traces show p95 duration of 24013ms while completed requests finish in 9-10ms, indicating in-flight requests hung while the container was terminated and the replacement could not start. This is a secondary symptom of the pod crash, not an independent fault.",
+      "confidence": 0.55,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "c4b53887b8d706aa",
+          "observed_value": "user_checkout_single | 9ms | ok — completed requests are fast, contrasting with p95_duration=24013ms across the 5 traces sampled",
+          "expected_baseline": "p95 trace duration < 100ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "search_traces(service_name=checkout, error_only=True, start=2026-09-17T09:48:19.685975+00:00, end=2026-09-17T09:50:28.699787+00:00)",
+          "observed_value": "5 total traces, 0 with errors, p95_duration=24013ms",
+          "expected_baseline": "p95_duration < 100ms with no multi-second hung traces"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency_ms mean=24.850, max=24.850 — completed spans fast; hung spans absent from histogram",
+          "expected_baseline": "p99_latency_ms < 50ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "Frontend, which depends on checkout for order placement, shows a mildly elevated error rate (max 0.063) during the window, consistent with degraded checkout availability propagating upstream. Frontend itself has zero restarts and no resource anomalies, confirming this is downstream impact of the checkout pod failure.",
+      "confidence": 0.4,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=0.013, p95=0.050, p99=0.061, max=0.063",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts mean=0.000, max=0.000 — frontend pods healthy",
+          "expected_baseline": "0 restarts"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Fix the image pull failure for gcr.io/google-containers/pause:latest: verify node-to-registry network connectivity (pull fails with DeadlineExceeded) and configure an accessible registry mirror or pre-pull/cache the pause image on the nodes.",
+    "Set imagePullPolicy to IfNotPresent (or use a locally mirrored tag) for the pause/sandbox image so pod sandbox creation does not depend on a live external registry pull.",
+    "Review the checkout container definition change that triggered 'Killing: Container checkout definition changed, will be restarted'; roll back if unintended, otherwise validate the new spec before rollout.",
+    "Once the image pull issue is resolved, delete the checkout pod stuck in ImagePullBackOff (kubectl delete pod -n otel-demo) and verify the readiness probe passes and the pod returns to Ready.",
+    "Add alerting on ErrImagePull/ImagePullBackOff events and on checkout request_rate drops so registry/pull failures are caught before KubePodNotReady fires.",
+    "After the checkout pod is Ready, verify frontend error rate returns below 0.01 and checkout p95 trace duration returns to < 100ms."
+  ],
+  "fault_type_classification": "pod_crash",
+  "grounding_score": 0.95,
+  "latency_s": 162.500875,
+  "cost_usd": 0.00467145,
+  "total_prompt_tokens": 5214,
+  "total_completion_tokens": 2711,
+  "llm_model": "glm-5.3",
+  "agent_version": "0.1.0"
+}

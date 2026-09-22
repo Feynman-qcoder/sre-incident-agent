@@ -1,0 +1,98 @@
+default:
+  # NOTE: providing `default.env` REPLACES the chart's built-in env list (Helm does not merge
+  # lists). The chart's defaults include OTEL_SERVICE_NAME / OTEL_RESOURCE_ATTRIBUTES — we must
+  # restore them here, otherwise every service falls back to the SDK default
+  # `unknown_service:<exe>` and all per-service metric/trace identity is lost.
+  env:
+    - name: OTEL_SERVICE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['app.kubernetes.io/component']
+    - name: OTEL_RESOURCE_ATTRIBUTES
+      value: "service.namespace=opentelemetry-demo,service.version=2.2.0,k8s.namespace.name=otel-demo"
+    - name: OTEL_COLLECTOR_NAME
+      value: "otel-collector.monitoring.svc.cluster.local"
+    - name: OTEL_EXPORTER_OTLP_INSECURE
+      value: "true"
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://otel-collector.monitoring.svc.cluster.local:4317"
+
+opentelemetry-collector:
+  enabled: false
+
+jaeger:
+  enabled: false
+
+prometheus:
+  enabled: false
+
+grafana:
+  enabled: false
+
+components:
+  load-generator:
+    enabled: true
+    # P1 环境调整（2026-09-17，GO/NO-GO 试探指令授权）：禁用 k6 browser VU。
+    # 原因：chromium headless 在 4 核 ECS 上形成重试风暴 → load 20+、containerd
+    # DeadlineExceeded、API Server EOF/RBAC 故障（部署实测记录）。
+    # NOTE: components.<svc>.env 与 default.env 一样是**整体替换**语义（Helm 不合并
+    # 列表），因此这里必须放 chart 默认 env 的完整副本，仅改 K6_BROWSER_ENABLED。
+    # 副本来源：集群实际渲染的 deployment env（2026-09-17 校对），含 chart 原生的
+    # 重复项 OTEL_EXPORTER_OTLP_ENDPOINT（后项覆盖前项，保持原样勿"清理"）。
+    env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.monitoring.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_INSECURE
+        value: "true"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-collector.monitoring.svc.cluster.local:4317
+      - name: LOAD_GENERATOR_VUS
+        value: "5"
+      - name: K6_TARGET_URL
+        value: http://frontend-proxy:8080
+      - name: K6_BROWSER_ENABLED
+        value: "false"
+      - name: K6_BROWSER_ARGS
+        value: no-sandbox,disable-dev-shm-usage
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: FLAGD_OFREP_PORT
+        value: "8016"
+      - name: LOCUST_HOST
+        value: http://frontend-proxy:8080
+      - name: LOCUST_HEADLESS
+        value: "true"
+      - name: LOCUST_AUTOSTART
+        value: "true"
+      - name: LOCUST_USERS
+        value: "5"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - name: K6_OTEL_EXPORTER_PROTOCOL
+        value: http/protobuf
+      - name: K6_OTEL_HTTP_EXPORTER_ENDPOINT
+        value: $(OTEL_COLLECTOR_NAME):4318
+      - name: K6_OTEL_HTTP_EXPORTER_INSECURE
+        value: "true"
+      - name: K6_OTEL_METRIC_PREFIX
+        value: k6.
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: service.namespace=opentelemetry-demo,service.version=2.2.0,k8s.namespace.name=otel-demo,service.criticality=low
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+  frontend:
+    service:
+      type: NodePort
+      nodePort: 30080

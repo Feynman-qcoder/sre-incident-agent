@@ -1,0 +1,79 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-5735b782",
+  "investigation_start_ts": "2026-09-18T08:17:29.205769+00:00",
+  "investigation_end_ts": "2026-09-18T08:19:44.942302+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "recommendation exhibits a saturated p99 latency pinned at the 10000 ms ceiling for the entire window, with a single trace p95_duration of ~5672504 ms, which cascades into frontend (its caller) also pinning at 10000 ms. Peer services (cart, ad) remain in the single-digit-to-low-ms range, isolating the anomaly to the recommendation path.",
+      "confidence": 0.4,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0 ms (histogram ceiling), flat across the whole window",
+          "expected_baseline": "p99 < 100 ms; peers in same window: cart p99 max=4.640 ms, ad p99 max=9.800 ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "6b78776609921bba",
+          "observed_value": "search_traces(service_name=recommendation): 20 traces, 0 errors, p95_duration=5672504 ms",
+          "expected_baseline": "p95 < 200 ms"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog is the shared downstream of both latency-affected services (frontend and recommendation) and shows an elevated CPU footprint (mean 2.754 cores, ~115x checkout's 0.024), consistent with a latency/saturation fault at the leaf propagating upward. No errors or restarts were observed on it, so a pure latency injection is the leading interpretation here.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=2.754 cores, max=2.910 (sustained)",
+          "expected_baseline": "peer checkout cpu_usage mean=0.024 cores"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "513e2053fed5f9fc",
+          "observed_value": "search_traces(service_name=product-catalog): 20 traces, 0 errors, p95_duration=16505 ms",
+          "expected_baseline": "p95 < 200 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "frontend p99 is also pinned at the 10000 ms ceiling, but frontend is the entry aggregator that depends on recommendation and product-catalog, so its latency is most plausibly inherited from a downstream fault rather than self-inflicted.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=10000.0 ms (histogram ceiling), flat across the whole window",
+          "expected_baseline": "p99 < 100 ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm the latency fault on recommendation (or its shared downstream product-catalog): inspect per-call span durations via search_traces to find which handler is sleeping and check for a chaos/flagd fault toggle.",
+    "If a latency fault was injected, disable/roll back the fault and verify recommendation and frontend p99 return to baseline (<100 ms).",
+    "Check cgroup CPU throttling on product-catalog (container_cpu_cfs_throttled_seconds_total) and, if it is the source, raise its CPU limit and/or scale replicas.",
+    "Add/verify per-call deadlines, timeouts, and circuit breakers on frontend→recommendation and recommendation→product-catalog so a single slow dependency cannot cascade a 10 s p99 ceiling to the entry service.",
+    "Re-sweep error_rate, cpu_usage, memory_usage and pod_restarts across all main services to fully rule out concurrent faults on checkout, cart, payment, shipping, currency and ad."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.6,
+  "latency_s": 135.736533,
+  "cost_usd": 0.0075417999999999995,
+  "total_prompt_tokens": 7187,
+  "total_completion_tokens": 4787,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

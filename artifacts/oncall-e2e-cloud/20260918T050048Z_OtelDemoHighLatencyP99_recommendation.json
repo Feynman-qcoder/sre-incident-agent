@@ -1,0 +1,121 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-f919f10f",
+  "investigation_start_ts": "2026-09-18T04:59:44.436667+00:00",
+  "investigation_end_ts": "2026-09-18T05:00:48.463183+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "product-catalog",
+      "fault_type": "high_latency",
+      "description": "product-catalog, a leaf dependency of recommendation/checkout/frontend, shows sustained server-side latency far above its ~2ms baseline for the entire incident window, with no errors, CPU, or memory pressure. This stalls every catalog browse and recommendation path and is the origin of the cluster-wide p99 latency spike.",
+      "confidence": 0.72,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=5302.657, p50=1891.336, p95=10000, p99=10000, max=10000 (ms)",
+          "expected_baseline": "p99 < ~50ms (median ~2ms, matching sibling leaves cart/payment/currency)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "mean=0.952, p95=2.026, p99=2.129, max=2.149 (no spike)",
+          "expected_baseline": "flat ~1 core; rules out cpu_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"})",
+          "observed_value": "mean=34386011 (~34MB), stable p50=34549760 max=41824256",
+          "expected_baseline": "stable ~34MB; rules out memory_stress"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[5m])) or vector(0)",
+          "observed_value": "0.000 across window",
+          "expected_baseline": "0 restarts; rules out pod_crash"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"product-catalog\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 across window",
+          "expected_baseline": "no errors; consistent with pure latency injection, rules out http_abort"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "1441a5ea89b2ff8a",
+          "observed_value": "search_traces(product-catalog, min_duration_ms=1500): 20 traces, 0 errors, p95_duration=413279ms; span user_browse_product=15000ms",
+          "expected_baseline": "product-catalog spans < 50ms"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Pulling image \"busybox:latest\"",
+          "observed_value": "product-catalog pod shows busybox:latest pull plus 'Killing: Stopping container product-catalog' and 'SuccessfulCreate: Created pod: product-catalog-5bb7676754-hcfpv' during window",
+          "expected_baseline": "no pod recreation / no busybox helper container in steady state (chaos injection marker)"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "recommendation is pinned at the histogram ceiling (p50=p99=10000ms) for the whole window and produced the longest frontend traces (~164s), consistent with inheriting product-catalog's injected latency plus retry/queue amplification upstream.",
+      "confidence": 0.18,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=6592.022, p50=10000, p95=10000, p99=10000, max=10000 (ms)",
+          "expected_baseline": "p99 < ~50ms (recommendation normally mirrors fast product-catalog lookups)"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "ada9012c00553803",
+          "observed_value": "search_traces(frontend, min_duration_ms=5000): user_get_recommendations = 164112ms (ok, 0 errors)",
+          "expected_baseline": "recommendation request < ~50ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "dependency_failure",
+      "description": "frontend/checkout sit at the latency ceiling (p50=p99=10000ms) and frontend emitted a transient error burst at window start while its product-catalog/recommendation dependencies hung — propagation of the product-catalog latency, not an independent fault.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "mean=7563.432, p50=10000, p95=10000, p99=10000, max=10000 (ms)",
+          "expected_baseline": "p99 < ~100ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=0.145, max=1.429; anomaly [1789706095→1789706215] (04:34:55→04:36:55)",
+          "expected_baseline": "error_rate ~0/s at steady state"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "mean=0.017, p99=0.024, max=0.024 (no spike)",
+          "expected_baseline": "flat low CPU; frontend is not resource constrained"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Confirm a latency chaos experiment (e.g. Chaos Mesh NetworkChaos/HTTPChaos with a busybox helper) is targeting the product-catalog pod; the busybox pull + container kill event is the injection marker.",
+    "Remove/pause the chaos experiment on product-catalog and verify its server p99 returns to ~single-digit ms; watch recommendation/checkout/frontend p99 recover downstream within minutes.",
+    "If the delay is not chaos-injected, inspect product-catalog's upstream data source (product DB / file load) for a slow dependency and add a request timeout + circuit breaker so a slow catalog cannot hang checkout/recommendation.",
+    "Add latency SLO alerts on product-catalog p99 and on the frontend BrowseProduct/GetRecommendations endpoints to catch this leaf-level regression earlier.",
+    "Tune recommendation's retry budget so a stalled product-catalog call cannot amplify to ~164s end-to-end traces."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.82,
+  "latency_s": 64.026516,
+  "cost_usd": 0.005420099999999999,
+  "total_prompt_tokens": 9822,
+  "total_completion_tokens": 1888,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

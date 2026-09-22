@@ -1,0 +1,54 @@
+{
+  "snapshot_ts": "2024-01-15T14:06:00+00:00",
+  "window_start": "2024-01-15T13:59:00+00:00",
+  "window_end": "2024-01-15T14:06:00+00:00",
+  "namespace": "otel-demo",
+  "services_snapshotted": [
+    "frontend",
+    "checkout",
+    "cart",
+    "payment"
+  ],
+  "service_topology": {
+    "frontend": [
+      "checkout",
+      "recommendation",
+      "product-catalog",
+      "cart",
+      "shipping",
+      "currency",
+      "ad"
+    ],
+    "checkout": [
+      "cart",
+      "payment",
+      "email",
+      "shipping",
+      "currency",
+      "product-catalog"
+    ],
+    "cart": [],
+    "payment": [],
+    "email": [],
+    "shipping": [
+      "quote"
+    ],
+    "quote": [],
+    "product-catalog": [],
+    "recommendation": [
+      "product-catalog"
+    ],
+    "currency": [],
+    "ad": [],
+    "load-generator": [
+      "frontend"
+    ],
+    "accounting": [
+      "checkout"
+    ],
+    "fraud-detection": [
+      "checkout"
+    ],
+    "flagd": []
+  }
+}

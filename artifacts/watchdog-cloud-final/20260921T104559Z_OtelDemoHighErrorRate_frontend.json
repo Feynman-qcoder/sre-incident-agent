@@ -1,0 +1,84 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-549ee968",
+  "investigation_start_ts": "2026-09-21T10:45:28.955566+00:00",
+  "investigation_end_ts": "2026-09-21T10:45:59.192471+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "The frontend edge service shows a severe p99 tail-latency spike (up to ~7004 ms, approaching the ~7s request timeout ceiling) while its p50/p95 remain ~23-25 ms, so a subset of edge requests stall until they time out/abort, producing the sustained ~1.27 req/s frontend server error rate. All downstream dependencies report zero server errors, localizing the fault to the frontend edge.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=2178.564 ms, max=7004.377 ms during anomaly window 1789982605.817→1789982845.817",
+          "expected_baseline": "p99 ~25 ms (p50=23.427 ms, p95=24.988 ms)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=1.274, p95=1.638, p99=1.720, max=1.790",
+          "expected_baseline": "error_rate < 0.01 (all other services = 0.000)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "checkout error_rate = 0.000",
+          "expected_baseline": "0.000 (healthy) — confirms no downstream failure propagation"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "The elevated frontend error rate with zero downstream server errors is also consistent with a directly injected HTTP abort at the frontend edge returning failing status codes without a slow dependency. The tail-latency evidence argues against a pure abort, but an injected abort/flag could still contribute.",
+      "confidence": 0.24,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate mean=1.274 sustained across window; downstream services all 0.000",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=2178.564 ms with p50=23.427 ms — bimodal latency rather than a uniform abort",
+          "expected_baseline": "p99 ~25 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "pod_crash",
+      "description": "Ruled out as the primary cause: frontend containers show zero restarts over the incident window; the fault manifests as latency and errors rather than pod termination.",
+      "confidence": 0.06,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts mean=0.000, max=0.000",
+          "expected_baseline": "0 restarts (no pod_crash)"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Capture and inspect frontend request traces/logs during the latency window to identify the specific handler or downstream call stalling to the ~7s timeout.",
+    "Review the active flagd feature-flag configuration for a frontend latency/timeout injection flag and disable it to validate the fault.",
+    "Add circuit-breaking and request timeouts on frontend downstream calls so tail-latency stalls do not convert into edge errors.",
+    "Add alerting on frontend p99 tail latency separately from error rate to catch latency-induced aborts earlier."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.75,
+  "latency_s": 30.236905,
+  "cost_usd": 0.00392105,
+  "total_prompt_tokens": 5740,
+  "total_completion_tokens": 1821,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

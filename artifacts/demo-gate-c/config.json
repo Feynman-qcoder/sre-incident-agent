@@ -1,0 +1,9 @@
+{
+  "run_id": "demo-gate-c",
+  "mode": "all",
+  "model": "deepseek-flash",
+  "seed": 42,
+  "agent_version": "0.1.0",
+  "n_scenarios": 11,
+  "ts": "2026-09-18T12:00:10.772305+00:00"
+}

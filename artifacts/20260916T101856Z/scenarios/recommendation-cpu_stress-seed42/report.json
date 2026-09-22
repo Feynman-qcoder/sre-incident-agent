@@ -1,0 +1,102 @@
+{
+  "incident_id": "recommendation-cpu_stress-seed42",
+  "investigation_start_ts": "2026-09-16T10:20:34.810956+00:00",
+  "investigation_end_ts": "2026-09-16T10:20:55.260805+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "cpu_stress",
+      "description": "The recommendation service is consuming abnormally high CPU (~2.34 cores mean, peaking at 3.61 cores), roughly 30-100x higher than every other service in the namespace, while error rate, latency, memory and restart counts remain normal. This signature is consistent with an injected CPU stress fault on recommendation's pods.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=2.343 cores, p95=3.604, max=3.608",
+          "expected_baseline": "peer services ~0.002-0.073 cores (frontend=0.070, product-catalog=0.025, checkout=0.003, shipping=0.002)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.070 cores",
+          "expected_baseline": "healthy comparison; recommendation is ~33x higher"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no errors)",
+          "expected_baseline": "error_rate < 0.01 — rules out http_abort as the dominant fault"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency ~19-24 ms (mean=19.123, max=24.000)",
+          "expected_baseline": "stable low latency — no latency blow-up"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[5m])) or vector(0)",
+          "observed_value": "restarts=0.000",
+          "expected_baseline": "0 restarts — rules out pod_crash"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "memory mean=105,861,666 bytes (~106 MB), stable",
+          "expected_baseline": "flat/stable working set — rules out memory_stress"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "get_pod_events(namespace=otel-demo, pod_name_prefix=recommendation, since_seconds=600)",
+          "observed_value": "no K8s events found (no OOMKilled/BackOff/FailedMount)",
+          "expected_baseline": "no crash/pressure events — consistent with pure CPU saturation, not pod failure"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "unknown",
+      "description": "product-catalog is recommendation's only downstream dependency; a fault there could propagate upstream. However, product-catalog CPU (~0.025 cores) and behavior were normal during the window, so it is only a weak secondary consideration.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"product-catalog-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.025 cores",
+          "expected_baseline": "normal, no CPU pressure on the downstream dependency"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "unknown",
+      "description": "frontend is the upstream caller of recommendation; a frontend-side fault would not explain the isolated CPU spike inside recommendation pods. Ruled out as root cause; normal CPU (0.070 cores).",
+      "confidence": 0.05,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"frontend-.*\"}[2m]))",
+          "observed_value": "cpu_usage mean=0.070 cores",
+          "expected_baseline": "healthy; no anomaly"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect recommendation pods for a runaway/CPU-bound process or injected stress workload and terminate it.",
+    "Temporarily raise CPU requests/limits and scale the recommendation deployment horizontally to shed load while the fault is contained.",
+    "Verify container CPU throttling metrics and confirm recovery of recommendation CPU back to <0.1 cores after remediation.",
+    "Add CPU-usage alerting on the recommendation deployment to catch similar stress injections earlier."
+  ],
+  "fault_type_classification": "cpu_stress",
+  "grounding_score": 0.8889,
+  "latency_s": 20.449849,
+  "cost_usd": 0.00337645,
+  "total_prompt_tokens": 4829,
+  "total_completion_tokens": 1606,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

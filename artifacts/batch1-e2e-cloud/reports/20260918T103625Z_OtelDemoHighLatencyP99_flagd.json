@@ -1,0 +1,114 @@
+{
+  "incident_id": "watchdog-OtelDemoHighLatencyP99-6db6d1e6",
+  "investigation_start_ts": "2026-09-18T10:35:35.690543+00:00",
+  "investigation_end_ts": "2026-09-18T10:36:25.803130+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "recommendation",
+      "fault_type": "high_latency",
+      "description": "Recommendation sits on the slow trace path (frontend -> recommendation -> product-catalog) with p95 trace duration ~30.75s and zero errors, while its CPU (~0.011 cores), memory (~193MB), restart count and error logs are all normal. checkout, which does not depend on recommendation, shows a distinctly lower p95 (~16.5s), isolating recommendation as the latency source rather than a shared downstream.",
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "d7ffd04f4ae4e231",
+          "observed_value": "recommendation trace path p95_duration=30751ms, 0 errors over 20 traces",
+          "expected_baseline": "recommendation server span p95 < 200ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "f9eeb6e45b229d46",
+          "observed_value": "checkout trace path has an individual span of 14999ms and p95_duration=16501ms (faster than the 30.75s recommendation path)",
+          "expected_baseline": "checkout p95 comparable to frontend path if fault were in shared downstream"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"recommendation-.*\"}[2m]))",
+          "observed_value": "mean=0.011 cores (flat, max=0.012) — no resource pressure",
+          "expected_baseline": "cpu_stress would show a sharp elevation above ~0.5 cores"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"recommendation-.*\"})",
+          "observed_value": "mean=193350860 bytes (~193MB, flat) — no memory pressure",
+          "expected_baseline": "memory_stress would show a rising working set"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"recommendation\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no anomaly)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "log",
+          "query_or_id": "{service_name=\"recommendation\"} |= \"error\"",
+          "observed_value": "[no logs found] — no error/abort logs",
+          "expected_baseline": "http_abort / crash would emit error log lines"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "[no K8s events found]",
+          "observed_value": "no pod events (no OOMKilled/BackOff) for recommendation-* pods",
+          "expected_baseline": "pod_crash would show restart/BackOff events"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "product-catalog",
+      "fault_type": "dependency_failure",
+      "description": "product-catalog is the common downstream of both the recommendation path (30.75s) and the checkout path (16.5s). If it were degraded it would explain elevated latency on both, but the unequal p95 (checkout much faster, and checkout does call product-catalog) makes it a weaker candidate than a recommendation-local latency injection.",
+      "confidence": 0.22,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "d7ffd04f4ae4e231",
+          "observed_value": "product-catalog spans appear in the 30751ms recommendation/frontend trace path with 0 errors",
+          "expected_baseline": "leaf product-catalog server span p95 < 50ms"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "f9eeb6e45b229d46",
+          "observed_value": "checkout (which also calls product-catalog) p95_duration=16501ms — lower than the 30.75s recommendation path",
+          "expected_baseline": "a downstream product-catalog fault would inflate both paths equally"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend shares the same 30.75s trace path as recommendation and is the upstream entry point, so it is most likely a propagation point rather than the origin; its own server error rate is 0 and it has no independent resource anomaly.",
+      "confidence": 0.1,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "d7ffd04f4ae4e231",
+          "observed_value": "frontend trace p95_duration=30751ms, 0 errors",
+          "expected_baseline": "frontend p95 < 200ms absent downstream latency"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no anomaly)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Scale out the recommendation deployment (increase replicas and CPU/memory headroom) to relieve the ~30s request handling observed on its server spans.",
+    "Instrument the recommendation -> product-catalog client-span path to confirm whether recommendation is blocked on a slow downstream call or is injecting latency itself.",
+    "Add a synthetic probe / SLO alert directly on the recommendation service p99 latency so the originating service is flagged instead of only the cluster-wide frontend P99 watchdog.",
+    "If latency persists without resource pressure, restart/roll out the recommendation pods to clear any stuck in-process state, and review the feature-flag (flagd) configuration for any flag causing slow evaluation."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 0.7,
+  "latency_s": 50.112587,
+  "cost_usd": 0.0047383,
+  "total_prompt_tokens": 7265,
+  "total_completion_tokens": 2091,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

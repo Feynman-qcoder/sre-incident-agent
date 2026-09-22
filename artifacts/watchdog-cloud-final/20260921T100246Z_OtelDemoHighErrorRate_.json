@@ -1,0 +1,85 @@
+{
+  "incident_id": "watchdog-OtelDemoHighErrorRate-3a0d3ec3",
+  "investigation_start_ts": "2026-09-21T10:02:08.574600+00:00",
+  "investigation_end_ts": "2026-09-21T10:02:46.785722+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "frontend",
+      "fault_type": "http_abort",
+      "description": "The frontend service sustained a roughly 60% server-side error rate (error_rate ~1.24/s out of ~2.04 req/s) across the entire incident window, while every downstream dependency reported zero server errors. This isolates the fault to the frontend edge, consistent with an injected HTTP abort rather than downstream failure propagation.",
+      "confidence": 0.6,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "mean=1.237, p50=1.267, p95=1.638, p99=1.708, max=1.733 errors/s sustained across window",
+          "expected_baseline": "error_rate < 0.01/s; all other services measured 0.000"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "mean=2.044, p95=2.736, max=2.971 req/s → ~60% of requests erroring",
+          "expected_baseline": "error fraction < 1%"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "0.000 errors/s (cart, payment, product-catalog, recommendation, shipping, currency, ad, email all also 0.000)",
+          "expected_baseline": "healthy downstream error_rate < 0.01/s"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "frontend",
+      "fault_type": "high_latency",
+      "description": "Frontend p99 latency spiked to ~7 s with an explicit anomaly detection during the window while p50 stayed at ~24 ms; this extreme latency tail could drive client timeouts that surface as the observed errors, making a frontend latency injection an alternative root cause.",
+      "confidence": 0.25,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99=5802.106 ms, max=7004.377 ms (mean=231.191, p50=23.992, p95=478.228); anomaly detected [1789982605.817→1789982635.817]",
+          "expected_baseline": "frontend p99 typically ~24-480 ms"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "flagd",
+      "fault_type": "dependency_failure",
+      "description": "Frontend holds long-lived gRPC EventStream connections to flagd (spans ~600 s) for feature-flag evaluation; degradation in the flagd evaluation path is a plausible secondary contributor to frontend error/latency, though no flagd error metric was confirmed within the tool budget.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "trace",
+          "query_or_id": "f26ed0b54198b347",
+          "observed_value": "/flagd.evaluation.v2.Service/EventStream span 600003 ms (trace search p95_duration=1770079 ms) on the frontend→flagd dependency",
+          "expected_baseline": "topology shows frontend depends on flagd (leaf); expected bounded stream behavior without error propagation"
+        },
+        {
+          "signal_type": "trace",
+          "query_or_id": "494236c81ca8e46d",
+          "observed_value": "user_add_to_cart span 7 ms ok (frontend trace search: 20 traces, p95_duration=18ms) — successful fast frontend traces coexist with failures",
+          "expected_baseline": "frontend requests typically complete in single-digit ms"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect frontend logs/traces to identify the specific failing route and returned HTTP status to confirm abort vs. timeout (broaden the LogQL filter since {service_name=\"frontend\"} |= \"error\" returned no lines).",
+    "Audit the active flagd feature-flag configuration for a frontend/route failure or latency flag and disable it to validate the injection.",
+    "Verify frontend→flagd EventStream connectivity and flagd pod health (get_pod_events for flagd) in case the 600 s streaming spans mask an evaluation stall.",
+    "Roll back or restart the frontend deployment if the abort is not feature-flag driven, then monitor frontend error_rate and p99 latency for recovery.",
+    "Add alerting on frontend error fraction (errors/requests) and p99 latency to catch edge-local faults that downstream error metrics miss."
+  ],
+  "fault_type_classification": "http_abort",
+  "grounding_score": 0.6,
+  "latency_s": 38.211122,
+  "cost_usd": 0.0040089,
+  "total_prompt_tokens": 7467,
+  "total_completion_tokens": 1329,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

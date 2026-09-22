@@ -1,0 +1,119 @@
+{
+  "incident_id": "quote-high_latency-seed42",
+  "investigation_start_ts": "2026-09-18T09:30:33.688639+00:00",
+  "investigation_end_ts": "2026-09-18T09:31:03.827219+00:00",
+  "root_causes": [
+    {
+      "rank": 1,
+      "service": "quote",
+      "fault_type": "high_latency",
+      "description": "The quote service (leaf dependency of shipping) is the origin: its server request rate is zero and its p99 latency histogram yields no samples across the window, while error rate, CPU, memory and restart count are all flat and the pod stays alive — indicating requests are stuck in-flight due to an injected latency fault rather than failing or crashing. That stall propagates up shipping → checkout → frontend, where p99 saturates at 10000 ms.",
+      "confidence": 0.78,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000 (flat, no completions)",
+          "expected_baseline": "request_rate > 0 while shipping/frontend issue quote calls"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"quote\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000 (no errors)",
+          "expected_baseline": "error_rate < 0.01"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(container_cpu_usage_seconds_total{namespace=\"otel-demo\",pod=~\"quote-.*\"}[2m]))",
+          "observed_value": "cpu_usage=0.000 (flat, pod alive)",
+          "expected_baseline": "nonzero CPU when serving requests"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(container_memory_working_set_bytes{namespace=\"otel-demo\",pod=~\"quote-.*\"})",
+          "observed_value": "memory_usage=57819136 bytes, flat across window",
+          "expected_baseline": "stable ~57.8 MB, no growth"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "max(increase(kube_pod_container_status_restarts_total{namespace=\"otel-demo\",pod=~\"quote-.*\"}[5m])) or vector(0)",
+          "observed_value": "pod_restarts=0",
+          "expected_baseline": "0 (no restarts)"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency=10000.000 ms (saturated)",
+          "expected_baseline": "p99 < ~1000 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency=10000.000 ms (saturated)",
+          "expected_baseline": "p99 < ~1000 ms"
+        },
+        {
+          "signal_type": "k8s_event",
+          "query_or_id": "Updated: Successfully update ObservedGeneration and FailedMessage of resource",
+          "observed_value": "only benign update events for quote pod (no OOMKilled/BackOff/FailedMount)",
+          "expected_baseline": "no crash/eviction events"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "service": "shipping",
+      "fault_type": "high_latency",
+      "description": "Shipping is the direct caller of quote; its own server request rate is also zero with no error samples, consistent with requests blocking on the stalled quote dependency rather than an independent fault.",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) or vector(0)",
+          "observed_value": "request_rate=0.000",
+          "expected_baseline": "request_rate > 0"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"shipping\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.000",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "service": "checkout",
+      "fault_type": "high_latency",
+      "description": "Checkout shows a saturated p99 of 10000 ms but flat error rate, indicating it is a downstream victim of the shipping→quote stall rather than the origin.",
+      "confidence": 0.15,
+      "evidence": [
+        {
+          "signal_type": "metric",
+          "query_or_id": "histogram_quantile(0.99, sum(rate(duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\"}[2m])) by (le))",
+          "observed_value": "p99_latency=10000.000 ms",
+          "expected_baseline": "p99 < ~1000 ms"
+        },
+        {
+          "signal_type": "metric",
+          "query_or_id": "sum(rate(calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or vector(0)",
+          "observed_value": "error_rate=0.004 (flat)",
+          "expected_baseline": "error_rate < 0.01"
+        }
+      ]
+    }
+  ],
+  "remediation_steps": [
+    "Inspect the quote pod for an injected latency fault (tc/netem delay or application-level sleep) — it stays alive with flat CPU/memory/restarts yet completes zero requests.",
+    "Capture shipping→quote client-side spans and add a quote client-latency histogram so the blocked dependency becomes directly measurable.",
+    "If the latency injection is confirmed, remove/revert the fault on quote and verify shipping, checkout and frontend p99 return to sub-second levels."
+  ],
+  "fault_type_classification": "high_latency",
+  "grounding_score": 1.0,
+  "latency_s": 30.13858,
+  "cost_usd": 0.0020628,
+  "total_prompt_tokens": 6940,
+  "total_completion_tokens": 1703,
+  "llm_model": "deepseek-flash",
+  "agent_version": "0.1.0"
+}

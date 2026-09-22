@@ -1,0 +1,16 @@
+# containerd registry hosts config for docker.io
+# Used by kind node containerd (containerd 2.x, config_path mode).
+# Order matters: containerd tries [host.*] entries in listed order, and only
+# falls back to `server` (the origin registry) if all of them fail.
+#
+# Measured on Aliyun Hangzhou ECS, 2026-09-16:
+#   docker.m.daocloud.io  -> ~2.1 MB/s (peak 3.17) for prom/prometheus:latest
+#   (docker.nju.edu.cn   -> listed as second mirror, general Docker Hub cache)
+
+server = "https://registry-1.docker.io"
+
+[host."https://docker.m.daocloud.io"]
+  capabilities = ["pull", "resolve"]
+
+[host."https://docker.nju.edu.cn"]
+  capabilities = ["pull", "resolve"]
