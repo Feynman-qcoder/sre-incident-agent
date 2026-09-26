@@ -38,7 +38,7 @@
 
 ## 效果图展示
 <img width="1199" height="2499" alt="a76ccdd315a525fce3f2b254bf412250" src="https://github.com/user-attachments/assets/768651c9-4e6d-44a7-91b5-128bc9eddf59" />
-<img width="1199" height="2499" alt="a76ccdd315a525fce3f2b254bf412250" src="https://github.com/user-attachments/assets/efaf0d26-5fcf-40a3-872f-a6a9dba4d287" />
+<img width="415" height="790" alt="image" src="https://github.com/user-attachments/assets/5ac301bd-fbe0-4e6a-91dc-ec134bd50d5a" />
 
 ## 架构
 
