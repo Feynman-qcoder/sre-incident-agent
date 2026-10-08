@@ -1,6 +1,6 @@
 # Kubernetes 事故调查 Agent（Event-driven SRE Agent）
 
-告警驱动的值班 Agent：**告警治理 → 自动调查 → 多源根因定位 → 修复建议送达企微 → ack 确认闭环**——可评测、可审计、刻意止步于自动修复（只诊断，不执行变更）。
+真实环境下，一个或多个根因故障会导致故障随着调用链传播下去，所以看到的很多指标警告不是故障变多了，而是故障传播了，所以针对事故故障调查流程繁琐复杂，设计了告警驱动的值班 Agent：**告警治理 → 自动调查 → 多源根因定位 → 修复建议送达企微 → ack 确认闭环**——可评测、可审计、刻意止步于自动修复（只诊断，不执行变更）。
 
 技术栈：`LangGraph` · `OpenTelemetry` · `Kubernetes` · `Prometheus / Loki / Tempo` · `Chaos Mesh` · `Alertmanager` · `deepseek`
 
@@ -39,6 +39,9 @@
 ## 效果图展示
 <img width="398" height="859" alt="image" src="https://github.com/user-attachments/assets/1f005781-96f5-4b79-8691-f7d016570e61" />
 <img width="415" height="790" alt="image" src="https://github.com/user-attachments/assets/5ac301bd-fbe0-4e6a-91dc-ec134bd50d5a" />
+
+## 电商平台微服务架构
+<img width="1696" height="2004" alt="本项目15个微服务拓扑分层图" src="https://github.com/user-attachments/assets/3281add6-accb-4df1-ad89-74f421ecc664" />
 
 ## 架构
 
